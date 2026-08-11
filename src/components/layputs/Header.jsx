@@ -9,7 +9,7 @@ export default function Header() {
   const toggleMenu = () => setIsOpen(!isOpen);
 
   return (
-    <header className="bg-white shadow-lg sticky top-0 z-50">
+    <header className="bg-white shadow-lg sticky top-0 z-190">
       <div className="flex justify-between items-center px-4 sm:px-7 py-2">
         {/* Logo Section */}
         <div className="flex items-center">

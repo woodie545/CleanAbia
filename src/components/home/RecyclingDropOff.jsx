@@ -1,4 +1,5 @@
 import React from 'react';
+import CollectionMap from './CollectionMap';
 
 export default function RecyclingDropOff() {
   const scheduleData = [
@@ -33,14 +34,18 @@ export default function RecyclingDropOff() {
         <div className="flex flex-col lg:flex-row justify-between gap-6 lg:gap-10 items-stretch">
           
           {/* Box 1: Info / Map Banner */}
-          <div className="w-full lg:w-1/2 bg-[#e5efe6] rounded-2xl p-6 sm:p-8 flex flex-col justify-between min-h-[220px] lg:min-h-full border border-green-900/10">
+          <div className="w-full lg:w-1/2 bg-[#e5efe6] rounded-2xl p-6 sm:p-8 flex flex-col justify-between min-h-[220px] lg:min-h-full border border-green-900/10 relative">
             <div>
-              <p className="font-mono text-sm sm:text-base font-semibold text-[#1f5a3e]">
+              <p className="font-mono text-sm sm:text-base font-semibold text-[#1f5a3e] absolute top-6 left-6 ">
                 6 Waste zones • Abia State
               </p>
             </div>
+
+            <div>
+              <CollectionMap className="" />
+            </div>
             {/* Visual placeholder area */}
-            <div className="mt-8 p-4 rounded-xl bg-white/50 backdrop-blur-xs border border-green-900/10 text-xs text-green-900 font-mono">
+            <div className="mt-8 p-4 rounded-xl bg-white/50 backdrop-blur-xs border border-green-900/10 text-xs text-green-900 font-mono absolute bottom-6 left-6 z-50">
               📍 Drop-off points verified across Aba, Umuahia, and surrounding LGAs.
             </div>
           </div>

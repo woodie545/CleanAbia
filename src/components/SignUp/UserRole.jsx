@@ -1,7 +1,7 @@
 import React from 'react';
 import { Camera, Layers, Check } from 'lucide-react';
 
-export default function UserRoles() {
+export default function UserRoles({setPage}) {
   const reporterFeatures = [
     'Camera + auto-location reporting, no forms to fill',
     'Earn points for every confirmed report',
@@ -59,7 +59,7 @@ export default function UserRoles() {
 
             {/* CTA Button */}
             <div className="pt-4">
-              <button className="w-full sm:w-auto bg-[#1f5a3e] hover:bg-[#15412c] text-white font-medium text-sm py-3 px-6 rounded-full transition-colors duration-200 cursor-pointer">
+              <button onClick={() => setPage('Reporter')} className="w-full sm:w-auto bg-[#1f5a3e] hover:bg-[#15412c] text-white font-medium text-sm py-3 px-6 rounded-full transition-colors duration-200 cursor-pointer">
                 Sign up as Reporter
               </button>
             </div>
@@ -96,7 +96,7 @@ export default function UserRoles() {
 
             {/* CTA Button */}
             <div className="pt-4">
-              <button className="w-full sm:w-auto bg-[#e6931e] hover:bg-[#cf8014] text-[#103021] font-semibold text-sm py-3 px-6 rounded-full transition-colors duration-200 cursor-pointer">
+              <button onClick={() => setPage('Agent')} className="w-full sm:w-auto bg-[#e6931e] hover:bg-[#cf8014] text-[#103021] font-semibold text-sm py-3 px-6 rounded-full transition-colors duration-200 cursor-pointer">
                 Sign up as Agent
               </button>
             </div>
