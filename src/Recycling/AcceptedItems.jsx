@@ -1,6 +1,7 @@
 //import React from 'react'
 import { IoCheckmarkSharp, IoCloseSharp } from "react-icons/io5";
-import { accepted, rejected } from "../../data/acceptedItems";
+import { accepted, rejected } from "@/Recycling/accepted";
+
 
 export default function AcceptedItems() {
   return (

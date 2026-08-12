@@ -5,7 +5,7 @@
 export default function HeroSection() {
   return (
     <section className="pb-20">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto p-6">
         {/* Back button */}
         <button className="flex items-center gap-2 text-[#17382B] hover:text-green-900 transition-colors">
            <IoArrowBack size={18} /> 

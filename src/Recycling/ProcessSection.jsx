@@ -1,5 +1,5 @@
 //import React from 'react'
-import { processSteps } from "../../Data/ProcessSteps";
+import { processSteps } from "@/Recycling/processSteps";
 
 export default function ProcessSection() {
   return (

@@ -1,7 +1,16 @@
+import FAQwaste from '@/Waste-Energy/FAQwaste'
+import Process from '@/Waste-Energy/Process'
+import { Tracker } from '@/Waste-Energy/Tracker'
+import Waste from '@/Waste-Energy/Waste'
 import React from 'react'
 
-export default function WasteToEnergry() {
+export default function WasteToEnergy() {
   return (
-    <div>Waste To Energry</div>
+    <div>
+      <Waste />
+      <Tracker />
+      <Process />
+      <FAQwaste />
+    </div>
   )
 }
