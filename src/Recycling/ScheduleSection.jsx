@@ -1,5 +1,5 @@
 //import React from 'react'
-import { schedule } from "../../Data/Schedule"
+import { schedule } from '@/Recycling/schedule'
 
 export default function ScheduleSection() {
   return (
