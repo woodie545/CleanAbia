@@ -7,13 +7,14 @@ import { Route, Routes } from 'react-router-dom'
 import Home from './components/pages/Home'
 import Recycling from './components/pages/Recycling'
 
-import About from './components/pages/About'
+
 import Contact from './components/pages/Contact'
 import Login from './components/pages/Login'
 import Signup from './components/pages/Signup'
 import Layout from './components/layputs/Index'
 import NotFound from './components/pages/notfound'
 import WasteToEnergry from './components/pages/WasteToEnergy'
+import About from './components/pages/About'
 
 function App() {
   const [count, setCount] = useState(0)
