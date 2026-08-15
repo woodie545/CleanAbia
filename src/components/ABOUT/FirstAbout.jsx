@@ -1,13 +1,14 @@
 import React from 'react'
 import { CgArrowLongLeft } from "react-icons/cg";
+import { NavLink } from 'react-router-dom';
 
 export default function FirstAbout() {
   return (
     <section className='mx-10 lg:mx-20 mt-10 w-[75%] lg:w-[54%]'>
-        <button className='flex items-center gap-2 text-green-800 font-bold'>
+        <NavLink to="/" className='flex items-center gap-2 text-green-800 font-bold'>
             <CgArrowLongLeft className='text-5xl'/>
             <h3 className='text-xl'>Back to home</h3>
-        </button>
+        </NavLink>
         <div className='flex items-center gap-2'>
             <div className='bg-green-800 w-10 h-[2px]'/>
             <h3 className='text-green-700 font-light text-xl'>ABOUT CLEANABIA</h3>

@@ -14,13 +14,10 @@ import Signup from './components/pages/Signup'
 import Layout from './components/layputs/Index'
 import NotFound from './components/pages/notfound'
 import WasteToEnergry from './components/pages/WasteToEnergy'
-<<<<<<< HEAD
 import SignAgent from './components/SignUp/SignAgent'
-import path from 'node:path'
 import SignReporter from './components/SignUp/SignReporter'
-=======
 import About from './components/pages/About'
->>>>>>> 7961347e47c47dd3dc817162a3f9dc3448ceb986
+import ForgotPassword from './components/Login/ForgotPassword'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -69,6 +66,10 @@ function App() {
     {
       path: "/Reporter",
       element: <SignReporter/>
+    },
+    {
+      path: "/forgotpassword",
+      element: <ForgotPassword/>
     }
   ]
 

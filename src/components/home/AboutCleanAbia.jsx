@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React from 'react';
 import { DollarSign, Eye, Zap } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
@@ -118,14 +117,3 @@ export default function AboutCleanAbia() {
     </section>
   );
 }
-=======
-import React from 'react'
-
-export default function AboutCleanAbia() {
-  return (
-    <div>
-      dddddd
-    </div>
-  )
-}
->>>>>>> 7961347e47c47dd3dc817162a3f9dc3448ceb986
