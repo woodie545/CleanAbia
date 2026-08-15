@@ -1,7 +1,7 @@
 //import React from 'react'
  import { useState } from "react";
 import { FiPlus, FiMinus } from "react-icons/fi";
-import {faq} from "../../Data/faq"
+import { faq } from "@/Recycling/faq";
 
 
 export default function Faqs() {

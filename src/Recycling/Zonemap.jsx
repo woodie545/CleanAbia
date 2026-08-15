@@ -5,14 +5,14 @@ import {
   FaRecycle,
   FaXmark,
 } from "react-icons/fa6";
-import locations from "./locations";
+import locations from "@/Recycling/locations";
 
 export default function ZoneMap() {
   const [selectedLocation, setSelectedLocation] = useState(null);
   return (
     <div className="relative h-105 overflow-hidden rounded-3xl bg-[#E5EEE5] sm:h-125 lg:h-137.5">
       <img
-        src="/abiamap.png"
+        src="public/Abia map.png"
         alt="Map of Abia State"
         className="absolute inset-0 h-full w-full object-contain"
       />

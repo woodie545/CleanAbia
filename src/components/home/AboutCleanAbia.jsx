@@ -1,5 +1,6 @@
 import React from 'react';
 import { DollarSign, Eye, Zap } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 
 const partners = [
   'ABIA MIN. OF ENVIRONMENT',
@@ -74,13 +75,13 @@ export default function AboutCleanAbia() {
 
           {/* CTA Button */}
           <div className="pt-2">
-            <a
-              href="#learn-more"
+            <NavLink
+              to="/about"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-gray-900 text-gray-900 text-xs sm:text-sm font-medium hover:bg-gray-900 hover:text-white transition-all duration-200"
             >
               Learn more about CleanAbia
               <span>→</span>
-            </a>
+            </NavLink>
           </div>
         </div>
 

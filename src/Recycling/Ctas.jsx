@@ -1,6 +1,7 @@
 //import React from 'react'
 //import { useNavigate } from "react-router-dom";
 import { FiMapPin } from "react-icons/fi";
+import { NavLink } from "react-router-dom";
 
 
 export default function Ctas() {
@@ -36,17 +37,17 @@ export default function Ctas() {
 
           <div className="flex flex-wrap gap-4">
 
-            <button className="bg-[#D8A63B] hover:bg-[#c89428] transition text-white px-8 py-4 rounded-full font-semibold">
+            <NavLink to="/Reporter" className="bg-[#D8A63B] hover:bg-[#c89428] transition text-white px-8 py-4 rounded-full font-semibold">
 
              Sign up as Reporter
 
-            </button>
+            </NavLink>
 
-            <button className="bg-white hover:bg-gray-100 transition text-[#17382B] px-8 py-4 rounded-full font-semibold">
+            <NavLink to="/Agent" className="bg-white hover:bg-gray-100 transition text-[#17382B] px-8 py-4 rounded-full font-semibold">
 
               Sign up as Agent
 
-            </button>
+            </NavLink>
 
           </div>
 

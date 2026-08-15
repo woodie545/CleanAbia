@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { FiPlus } from 'react-icons/fi'
+import { NavLink } from 'react-router-dom';
 
 export const comQuest = [
     {id: 1,
@@ -83,12 +84,12 @@ function FAQwaste() {
                     >
                         View drop-off zones
                     </a>
-                    <a
-                        href='#'
+                    <NavLink
+                        to="/Reporter"
                         className='w-full rounded-full border-2 border-[#1E5B3E] px-7 py-3.5 text-center font-medium text-[#1E5B3E] transition-colors hover:bg-[#1E5B3E] hover:text-white sm:w-auto'
                     >
                         Sign up as reporter
-                    </a>
+                    </NavLink>
                 </div>
             </div>
         </div>

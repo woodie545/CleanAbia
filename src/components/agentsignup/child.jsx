@@ -6,8 +6,9 @@ import { FiEye, FiEyeOff } from 'react-icons/fi'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { RxCross1 } from 'react-icons/rx'
 import { useRef } from 'react'
-import { Link } from 'react-router'
+import { Link, NavLink } from 'react-router'
 import { HiMiniArrowUpTray } from 'react-icons/hi2'
+
 
 export default function AgentSignChild({setPage}) {
   const [image,setImage]= useState(null)
@@ -71,7 +72,9 @@ export default function AgentSignChild({setPage}) {
   return (
             <div className='lg:w-[50%] w-full min-h-screen bg-[#E4EEE7]'>
             <section className='lg:w-[65%] md:w-[85%] md:m-auto  pr-5 pl-5 lg:pl-0 lg:pr-0 pt-8 pb-5 overflow-auto '>
-                <button className='py-1 border-2 w-15  mb-5 flex items-center gap-1 px-1 justify-center'><FaArrowLeftLong/>back</button>
+                <button className='py-1 border-2 w-15  mb-5 flex items-center gap-1 px-1 justify-center' onClick={() => setPage("Userrole")}>
+                    <FaArrowLeftLong/>back
+                </button>
                 <p className='text-xl md:text-4xl lg:text-xl font-semibold text-left lg:text-left md:text-center '>Create your Agent account</p>
                 <p className='text-gray-700 text-left lg:text-left md:text-center md:text-2xl lg:text-[17px] text-[17px]'>Identity verification is required before you can accept jobs.</p>
                 <form  className='space-y-5 mt-5' onSubmit={handleSubmit(submitfn)}>
@@ -172,7 +175,7 @@ export default function AgentSignChild({setPage}) {
                     </div>
                     <button className='w-full bg-amber-400 py-2 rounded-2xl border' type='submit'>Create Agent account</button>
                 </form>
-                <p className='text-sm text-center pt-3'>Already have an account? <a href="/agentlogin" className='text-green-600'>Log in</a></p>
+                <p className='text-sm text-center pt-3'>Already have an account? <NavLink to="/login" className='text-green-600'>Log in</NavLink></p>
             </section>
             </div>
   )

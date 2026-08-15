@@ -1,6 +1,7 @@
 import React from 'react';
 import { FaCircle } from 'react-icons/fa';
 import { steps } from './carousel';
+import { NavLink } from 'react-router-dom';
 
 export default function WasteToEnergy() {
   const earningsData = [
@@ -54,9 +55,11 @@ export default function WasteToEnergy() {
               Every kilogram you bring in is weighed, sorted and paid for on the spot — then routed to Abia State's waste-to-energy partners, where it's converted into electricity that feeds back into the local grid.
             </p>
             <div className="pt-2">
-              <button className="w-full sm:w-auto border border-[#103021] rounded-2xl px-5 py-2.5 font-semibold text-[#103021] hover:bg-[#103021] hover:text-white transition-all cursor-pointer text-xs sm:text-sm">
+              <NavLink 
+                to="/wastetoenergy"
+              className="w-full sm:w-auto border border-[#103021] rounded-2xl px-5 py-2.5 font-semibold text-[#103021] hover:bg-[#103021] hover:text-white transition-all cursor-pointer text-xs sm:text-sm">
                 Learn more about waste-to-energy &rarr;
-              </button>
+              </NavLink>
             </div>
           </div>
 

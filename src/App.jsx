@@ -14,6 +14,9 @@ import Signup from './components/pages/Signup'
 import Layout from './components/layputs/Index'
 import NotFound from './components/pages/notfound'
 import WasteToEnergry from './components/pages/WasteToEnergy'
+import SignAgent from './components/SignUp/SignAgent'
+import path from 'node:path'
+import SignReporter from './components/SignUp/SignReporter'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -54,6 +57,14 @@ function App() {
     {
       path: "*",
       element: <NotFound/>
+    }, 
+    {
+      path:"/Agent",
+      element: <SignAgent/>
+    },
+    {
+      path: "/Reporter",
+      element: <SignReporter/>
     }
   ]
 

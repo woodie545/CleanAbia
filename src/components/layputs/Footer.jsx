@@ -1,4 +1,5 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
 
 export default function Footer() {
   return (
@@ -26,9 +27,9 @@ export default function Footer() {
               PRODUCT
             </h3>
             <ul className="space-y-3 text-sm font-medium text-[#c8d9cc]">
-              <li><a href="#report" className="hover:text-white transition-colors">Report a site</a></li>
-              <li><a href="#agent" className="hover:text-white transition-colors">Become an agent</a></li>
-              <li><a href="#centres" className="hover:text-white transition-colors">Recycling centres</a></li>
+              <li><NavLink to="/Report" className="hover:text-white transition-colors">Report a site</NavLink></li>
+              <li><NavLink to="/Agent" className="hover:text-white transition-colors">Become an agent</NavLink></li>
+              <li><NavLink to="/Recycling" className="hover:text-white transition-colors">Recycling centres</NavLink></li>
             </ul>
           </div>
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import CollectionMap from './CollectionMap';
+import { NavLink } from 'react-router-dom';
 
 export default function RecyclingDropOff() {
   const scheduleData = [
@@ -25,9 +26,11 @@ export default function RecyclingDropOff() {
           <p className="text-base sm:text-lg text-gray-600 leading-relaxed">
             Six designated zones across Abia State accept recyclables on fixed days—no need to wait for a job offer, just show up with your sorted waste.
           </p>
-          <button className="font-semibold text-xs sm:text-sm border border-[#1f5a3e] text-[#1f5a3e] rounded-full py-2.5 px-5 hover:bg-[#1f5a3e] hover:text-white transition-all cursor-pointer">
+          <NavLink
+          to="/recycling"
+          className="font-semibold text-xs sm:text-sm border border-[#1f5a3e] text-[#1f5a3e] rounded-full py-2.5 px-5 hover:bg-[#1f5a3e] hover:text-white transition-all cursor-pointer">
             Learn more about recycling &rarr;
-          </button>
+          </NavLink>
         </div>
 
         {/* Content Section: 2 Columns on Desktop, 1 Column on Mobile */}

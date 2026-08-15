@@ -24,7 +24,7 @@ export default function Header() {
         </div>
 
         {/* Desktop Main Navigation */}
-        <nav className="hidden md:flex space-x-6 items-center">
+        <nav className="hidden lg:flex space-x-6 items-center">
           {navList.map((l, idx) => (
             <NavLink
               key={idx}
@@ -41,7 +41,7 @@ export default function Header() {
         </nav>
 
         {/* Desktop Auth Navigation */}
-        <nav className="hidden md:flex space-x-4 items-center">
+        <nav className="hidden lg:flex space-x-4 items-center">
           {authLinks.map((l, idx) => (
             <NavLink
               key={idx}
@@ -58,7 +58,7 @@ export default function Header() {
         </nav>
 
         {/* Mobile Hamburger Toggle Button */}
-        <div className="md:hidden flex items-center">
+        <div className="lg:hidden flex items-center">
           <button
             onClick={toggleMenu}
             className="text-gray-700 text-3xl focus:outline-none p-1"
@@ -71,7 +71,7 @@ export default function Header() {
 
       {/* Mobile Menu Dropdown Drawer */}
       {isOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100 px-6 py-4 flex flex-col space-y-4 shadow-inner">
+        <div className="lg:hidden bg-white border-t border-gray-100 px-6 py-4 flex flex-col space-y-4 shadow-inner">
           {/* Main Links */}
           <div className="flex flex-col space-y-3 pb-3 border-b border-gray-200">
             {navList.map((l, idx) => (

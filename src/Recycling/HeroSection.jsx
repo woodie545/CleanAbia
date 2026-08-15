@@ -1,16 +1,19 @@
 //import React from 'react'
  import { IoArrowBack } from "react-icons/io5";
  import { FiMapPin } from "react-icons/fi";
-
+ import { NavLink } from "react-router-dom";
 export default function HeroSection() {
+  
   return (
     <section className="pb-20">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto p-6">
         {/* Back button */}
-        <button className="flex items-center gap-2 text-[#17382B] hover:text-green-900 transition-colors">
+        <NavLink 
+          to="/"
+        className="flex items-center gap-2 text-[#17382B] hover:text-green-900 transition-colors">
            <IoArrowBack size={18} /> 
           <span className="font-medium">Back to Home</span>
-        </button>
+        </NavLink>
 
         {/* Hero content */}
         <div className="mt-10 max-w-3xl">
