@@ -1,6 +1,5 @@
 import { supabase } from '../lib/supabase'
 
-
 export async function getAvailableJobs() {
   const { data, error } = await supabase
     .from('jobs')
@@ -67,6 +66,19 @@ export async function getMyJobs() {
     .eq('agent_id', user.id)
     .order('created_at', {
       ascending: false,
+    })
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}
+
+export async function acceptJob(jobId) {
+  const { data, error } =
+    await supabase.rpc('accept_job', {
+      p_job_id: jobId,
     })
 
   if (error) {
