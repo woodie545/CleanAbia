@@ -87,3 +87,20 @@ export async function acceptJob(jobId) {
 
   return data
 }
+
+export async function completeJob(
+  jobId,
+  note = null
+) {
+  const { data, error } =
+    await supabase.rpc('complete_job', {
+      p_job_id: jobId,
+      p_note: note,
+    })
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}
