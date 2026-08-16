@@ -1,6 +1,5 @@
 import { supabase } from '../lib/supabase'
 
-
 export async function createReport({
   title,
   description,
@@ -79,6 +78,53 @@ export async function getReport(reportId) {
     `)
     .eq('id', reportId)
     .single()
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}
+
+export async function uploadReportImage(
+  reportId,
+  file
+) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('You must be logged in.')
+  }
+
+  const extension =
+    file.name.split('.').pop()
+
+  const fileName =
+    `${crypto.randomUUID()}.${extension}`
+
+  const filePath =
+    `${reportId}/${fileName}`
+
+  const { error: uploadError } =
+    await supabase.storage
+      .from('report-images')
+      .upload(filePath, file)
+
+  if (uploadError) {
+    throw uploadError
+  }
+
+  const { data, error } =
+    await supabase
+      .from('report_images')
+      .insert({
+        report_id: reportId,
+        storage_path: filePath,
+      })
+      .select()
+      .single()
 
   if (error) {
     throw error
