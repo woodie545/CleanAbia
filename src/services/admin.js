@@ -94,3 +94,22 @@ export async function getAllJobs() {
 
   return data
 }
+
+export async function confirmReport(
+  reportId,
+  points = 10,
+  payoutAmount = 0
+) {
+  const { data, error } =
+    await supabase.rpc('confirm_report', {
+      p_report_id: reportId,
+      p_points: points,
+      p_payout_amount: payoutAmount,
+    })
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}
