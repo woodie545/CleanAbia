@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import Aside from './aside'
 import Main from './main'
 import { getAvailableJobs, acceptJob } from '../services/jobs'
-import { getUserProfile } from '../services/profiles'
+import { getMyProfile } from '../services/profiles'
 
 export default function Agents() {
   const [pages, setPages] = useState('Overview')
@@ -20,10 +20,10 @@ export default function Agents() {
         setLoading(true)
         setError(null)
 
-        const [profileData, jobsData] = await Promise.all([
-          getUserProfile(),
-          getAvailableJobs()
-        ])
+    const [profileData, jobsData] = await Promise.all([
+      getMyProfile(),
+      getAvailableJobs()
+    ])
 
         setProfile(profileData)
         setJobs(jobsData || [])
