@@ -15,8 +15,10 @@ export default function LoginSection() {
         setLoading(true)
 
         try {
-            const { user, error } = await signIn(email, password)
-            if (error) throw error
+            const { user } = await signIn(email, password)  
+            if (!user) {
+            throw new Error('Login failed.')    
+            }
 
             // Redirect automatically after successful login
             navigate('/dashboard')

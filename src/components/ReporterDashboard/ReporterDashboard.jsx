@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import Aside from "./Aside";
 import SemiMain from "./SemiMain";
-import { getMyReports } from '../services/reports';
-import { getMyProfile, updateMyProfile } from '../services/profiles'; 
+import { getMyReports } from '../../services/reports'
+import {
+  getMyProfile,
+  updateMyProfile,
+} from '../../services/profiles'
 
 export default function ReporterDashboard() {
   const [pages, setPages] = useState("overview");
@@ -23,7 +26,7 @@ export default function ReporterDashboard() {
 
         // Fetch profile and reports in parallel
         const [profileData, reportsData] = await Promise.all([
-          getUserProfile(),
+          getMyProfile(),
           getMyReports()
         ]);
 
@@ -43,7 +46,7 @@ export default function ReporterDashboard() {
   // Helper function to update profile directly via Supabase service
   const handleProfileUpdate = async (updatedFields) => {
     try {
-      const updatedProfile = await updateUserProfile(updatedFields);
+      const updatedProfile = await updateMyProfile(updatedFields);
       setUserProfile(updatedProfile);
     } catch (err) {
       console.error("Failed to update profile:", err);

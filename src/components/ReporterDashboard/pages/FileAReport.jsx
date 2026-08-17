@@ -1,7 +1,7 @@
 import {
   createReport,
   uploadReportImage,
-} from '../services/reports'
+} from '../../../services/reports'
 
 const report =
   await createReport({
