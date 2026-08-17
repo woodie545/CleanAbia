@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Aside from "./Aside";
 import SemiMain from "./SemiMain";
 import { getMyReports } from '../services/reports';
-import { getUserProfile, updateUserProfile } from '../services/profile'; // Assuming profile service exists
+import { getUserProfile, updateUserProfile } from '../services/profiles'; // Assuming profile service exists
 
 export default function ReporterDashboard() {
   const [pages, setPages] = useState("overview");
