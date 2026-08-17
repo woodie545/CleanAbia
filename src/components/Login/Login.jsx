@@ -1,48 +1,116 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { signIn } from '../../services/auth'
 
 export default function LoginSection() {
-    return (
-        <section className='bg-[#E4EEE7] grid md:grid-cols-2 overflow-y-hidden'>
-            <div className='bg-[#123A28] text-white px-8 md:px-20 py-6 md:flex flex-col hidden'>
-                <div className='flex items-center'>
-                    <img src="/MAIN LOGO 2.png" alt="CleanAbiaLogo" className=' w-12 h-12' />
-                    <h2 className='font-semibold text-2xl '>CleanAbia</h2>
-                </div>
-                <div className='mt-20 md:mt-20 max-w-md '>
-                    <h1 className='font-semibold text-4xl md:text-5xl p-2 leading-tight'>Welcome back to the loop.</h1>
-                    <p className='text-lg text-gray-300 leading-relaxed mt-6'>Log in to file a report, check a job offer, or track your payout.</p>
-                </div>
-                <div className='mt-auto pt-10 text-gray-400'>Umuahia, Abia State. cleanAbia.ng
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [errorMsg, setErrorMsg] = useState('')
+    const [loading, setLoading] = useState(false)
+    const navigate = useNavigate()
 
+    async function handleLogin(e) {
+        e.preventDefault()
+        setErrorMsg('')
+        setLoading(true)
+
+        try {
+            const { user, error } = await signIn(email, password)
+            if (error) throw error
+
+            // Redirect automatically after successful login
+            navigate('/dashboard')
+        } catch (error) {
+            setErrorMsg(error.message || 'Failed to log in')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <section className='bg-[#E4EEE7] grid md:grid-cols-2 min-h-screen overflow-y-hidden'>
+            {/* Left Panel - Hero */}
+            <div className='bg-[#123A28] text-white px-8 md:px-20 py-6 md:flex flex-col hidden'>
+                <div className='flex items-center gap-2'>
+                    <img src="/MAIN LOGO 2.png" alt="CleanAbiaLogo" className='w-12 h-12' />
+                    <h2 className='font-semibold text-2xl'>CleanAbia</h2>
+                </div>
+                <div className='mt-20 max-w-md'>
+                    <h1 className='font-semibold text-4xl md:text-5xl p-2 leading-tight'>
+                        Welcome back to the loop.
+                    </h1>
+                    <p className='text-lg text-gray-300 leading-relaxed mt-6'>
+                        Log in to file a report, check a job offer, or track your payout.
+                    </p>
+                </div>
+                <div className='mt-auto pt-10 text-gray-400'>
+                    Umuahia, Abia State. cleanAbia.ng
                 </div>
             </div>
 
-            <div className='w-full px-8 md:px-16 py-6'>
+            {/* Right Panel - Form */}
+            <div className='w-full px-8 md:px-16 py-6 flex flex-col justify-center'>
                 <h1 className='text-3xl md:text-4xl font-medium text-gray-900 p-2'>Log In</h1>
-                <p className='mt-4 text-lg text-gray-600 leading-relaxed'>Reporter, Agent and Admin accounts all log in here - you'll land on the right dashboard automatically. </p>
-                <form action="" className='mt-10'>
+                <p className='mt-4 text-lg text-gray-600 leading-relaxed'>
+                    Reporter, Agent and Admin accounts all log in here - you'll land on the right dashboard automatically.
+                </p>
+
+                {errorMsg && (
+                    <div className='mt-4 p-3 bg-red-100 text-red-700 rounded-xl text-sm'>
+                        {errorMsg}
+                    </div>
+                )}
+
+                <form onSubmit={handleLogin} className='mt-8'>
                     <div>
-                        <label htmlFor="" className='block text-base font-semibold text-gray-900 mb-2'>Email address</label>
-                        <input type="email" placeholder='Enter your Email Address' className='p-2 pl-3 w-full h-10 rounded-xl border border-gray-300 bg-white text-lg outline-none' />
+                        <label className='block text-base font-semibold text-gray-900 mb-2'>
+                            Email address
+                        </label>
+                        <input 
+                            type="email" 
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder='Enter your Email Address' 
+                            className='p-2 pl-3 w-full h-10 rounded-xl border border-gray-300 bg-white text-lg outline-none focus:ring-2 focus:ring-[#123A28]' 
+                        />
                     </div>
 
-                    <div className='mt-7 h-10 rounded-2xl'>
-                        <label htmlFor="" className='block text-base font-semibold text-gray-900 mb-2'>Password</label>
-                        <input type="password" placeholder='***********' className='p-2 pl-3 w-full h-10 rounded-xl border border-gray-300 bg-white text-lg outline-none' />
-                    </div>
-                    <div className='text-right mb-8  mt-7'>
-                        <Link to="/forgotpassword" className='text-green-600 hover:underline'>Forgot Password</Link>
+                    <div className='mt-6'>
+                        <label className='block text-base font-semibold text-gray-900 mb-2'>
+                            Password
+                        </label>
+                        <input 
+                            type="password" 
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder='***********' 
+                            className='p-2 pl-3 w-full h-10 rounded-xl border border-gray-300 bg-white text-lg outline-none focus:ring-2 focus:ring-[#123A28]' 
+                        />
                     </div>
 
-                    <button className='bg-green-900 rounded-2xl text-white w-full h-10 mt-10 '>Log in</button>
+                    <div className='text-right my-4'>
+                        <Link to="/forgotpassword" className='text-green-600 hover:underline text-sm font-medium'>
+                            Forgot Password?
+                        </Link>
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        disabled={loading}
+                        className='bg-[#123A28] disabled:bg-gray-400 hover:bg-[#0e2d1f] transition-colors rounded-2xl text-white w-full h-10 font-medium'
+                    >
+                        {loading ? 'Logging in...' : 'Log in'}
+                    </button>
                 </form>
 
-
-                <p className='text-center mt-8 text-lg text-gray-600'>New to Clean Abia?{" "}
-                    <Link to="/signup" className='font-bold hover:underline text-[#126247]'>Signup</Link>
+                <p className='text-center mt-8 text-lg text-gray-600'>
+                    New to Clean Abia?{" "}
+                    <Link to="/signup" className='font-bold hover:underline text-[#126247]'>
+                        Signup
+                    </Link>
                 </p>
-                <Link />
             </div>
         </section>
     )
