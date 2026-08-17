@@ -1,43 +1,63 @@
 import React, { useState, useEffect } from "react";
 import Aside from "./Aside";
 import SemiMain from "./SemiMain";
-
-const DEFAULT_PROFILE = {
-  fullName: "Chidinma Okafor",
-  email: "chidinma.okafor@example.com",
-  address: "15 Brass Street, Aba, Abia State",
-  reporterId: "CA-ABA-8921",
-  role: "Community Reporter",
-  notifications: true,
-  smsAlerts: false,
-};
+import { getMyReports } from '../services/reports';
+import { getUserProfile, updateUserProfile } from '../services/profile'; // Assuming profile service exists
 
 export default function ReporterDashboard() {
   const [pages, setPages] = useState("overview");
+  
+  // State management
+  const [userProfile, setUserProfile] = useState(null);
+  const [reports, setReports] = useState([]);
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Safe lazy state initialization
-  const [userProfile, setUserProfile] = useState(() => {
-    try {
-      const savedProfile = localStorage.getItem("userProfile");
-      if (savedProfile) {
-        const parsed = JSON.parse(savedProfile);
-        // Ensure parsed value is an object and merge with defaults
-        if (parsed && typeof parsed === "object") {
-          return { ...DEFAULT_PROFILE, ...parsed };
-        }
-      }
-    } catch (e) {
-      console.error("Failed to parse userProfile from localStorage:", e);
-    }
-    return DEFAULT_PROFILE;
-  });
-
-  // Sync to localStorage
+  // Fetch user profile and reports from Supabase on mount
   useEffect(() => {
-    if (userProfile) {
-      localStorage.setItem("userProfile", JSON.stringify(userProfile));
+    async function loadDashboardData() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch profile and reports in parallel
+        const [profileData, reportsData] = await Promise.all([
+          getUserProfile(),
+          getMyReports()
+        ]);
+
+        setUserProfile(profileData);
+        setReports(reportsData || []);
+      } catch (err) {
+        console.error("Error loading dashboard data from Supabase:", err);
+        setError("Failed to load dashboard data. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     }
-  }, [userProfile]);
+
+    loadDashboardData();
+  }, []);
+
+  // Helper function to update profile directly via Supabase service
+  const handleProfileUpdate = async (updatedFields) => {
+    try {
+      const updatedProfile = await updateUserProfile(updatedFields);
+      setUserProfile(updatedProfile);
+    } catch (err) {
+      console.error("Failed to update profile:", err);
+      throw err;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-forest-tint">
+        <div className="text-lg font-medium text-gray-700">Loading dashboard...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-forest-tint">
@@ -51,7 +71,9 @@ export default function ReporterDashboard() {
         pages={pages}
         setPages={setPages}
         userProfile={userProfile}
-        setUserProfile={setUserProfile}
+        setUserProfile={handleProfileUpdate}
+        reports={reports}
+        reportsError={error}
       />
     </div>
   );
