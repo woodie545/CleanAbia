@@ -4,21 +4,21 @@ import { Box, Settings, Zap, Plus } from 'lucide-react';
 export const imgList = [
     {
         id: 1,
-        img: "public/img1.png",
+        img: "/img1.png",
         text: "Snap a dirty site, tag ypu location",
         descriprion: "STEP 01 - REPORTERS"
     },
 
     {
         id: 2,
-        img: "public/img2.png",
+        img: "/img2.png",
         text: "Verified agents clear and collect",
         descriprion: "STEP 02 - AGENTS"
     },
 
     {
         id: 3,
-        img: "public/img3.png",
+        img: "/img3.png",
         text: "Reacyclables become energy-you get paid",
         descriprion: "STEP 03 - RECYCLABLES CREATE"
     },

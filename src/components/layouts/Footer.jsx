@@ -72,7 +72,7 @@ export default function Footer() {
           <div className="flex gap-2">
             <a href="#privacy" className="hover:text-white transition-colors">Privacy</a>
             <span>·</span>
-            <a href="#terms" className="hover:text-white transition-colors">Terms</a>
+            <NavLink to="/terms" className="hover:text-white transition-colors">Terms</NavLink>
           </div>
         </div>
       </div>

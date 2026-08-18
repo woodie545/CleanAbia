@@ -90,7 +90,7 @@ export default function Hero() {
             Report a dirty site
           </button>
           <NavLink 
-            to="/signup" 
+            to="/Agent" 
             className="border border-gray-400 px-6 py-3 text-sm rounded-md text-center font-medium hover:bg-gray-50 transition-colors"
           >
             Join as an Agent

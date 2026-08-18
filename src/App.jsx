@@ -11,7 +11,7 @@ import Recycling from './components/pages/Recycling'
 import Contact from './components/pages/Contact'
 import Login from './components/pages/Login'
 import Signup from './components/pages/Signup'
-import Layout from './components/layputs/Index'
+import Layout from './components/layouts/Index'
 import NotFound from './components/pages/notfound'
 import WasteToEnergry from './components/pages/WasteToEnergy'
 import SignAgent from './components/SignUp/SignAgent'
@@ -22,6 +22,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import ReporterDashboard from './components/ReporterDashboard/ReporterDashboard'
 import AdminDashboard from './components/Admin/AdminDashboard'
 import AgentDashboard from './cleanAbia/Agents'
+import Terms from './components/agentsignup/terms'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -74,6 +75,10 @@ function App() {
     {
       path: "/forgotpassword",
       element: <ForgotPassword/>
+    },
+    {
+      path: "/terms",
+      element: <Terms/>
     }
   ]
 
