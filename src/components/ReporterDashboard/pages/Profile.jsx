@@ -1,27 +1,35 @@
 import React, { useState, useEffect, useRef } from "react";
-import { GoPerson, GoMail, GoLocation, GoShield } from "react-icons/go";
+import { GoPerson, GoMail, GoLocation, GoShield, GoDeviceMobile } from "react-icons/go";
 import { CiCamera } from "react-icons/ci";
+import { useAuth } from "../../../hooks/useAuth";
+import { uploadAvatar } from "../../../services/profiles";
 
+// Field names below match the `profiles` table exactly
+// (full_name, phone, location, avatar_url) so saves persist
+// correctly to Supabase.
 export default function Profile({ setPages, userProfile, setUserProfile }) {
-  // Fallback defaults if parent prop isn't passed yet
+  const { user, refreshProfile } = useAuth();
+
   const defaultProfile = {
-    fullName: "Chidinma Okafor",
-    email: "chidinma.okafor@example.com",
-    address: "15 Brass Street, Aba, Abia State",
-    reporterId: "CA-ABA-8921",
-    role: "Community Reporter",
-    avatarUrl: null, // Track avatar image source
+    full_name: "Chidinma Okafor",
+    phone: "",
+    location: "15 Brass Street, Aba, Abia State",
+    role: "reporter",
+    avatar_url: null,
   };
 
   const initialData = userProfile || defaultProfile;
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(initialData);
+  const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [message, setMessage] = useState({ type: "", text: "" });
 
-  // Hidden file input reference
   const fileInputRef = useRef(null);
 
-  // Sync state if userProfile prop changes from parent or localStorage hydration
+  // Sync state if userProfile prop changes from the parent
+  // (e.g. after a refresh from Supabase).
   useEffect(() => {
     if (userProfile) {
       setFormData(userProfile);
@@ -36,34 +44,39 @@ export default function Profile({ setPages, userProfile, setUserProfile }) {
     }));
   };
 
-  // Trigger file picker click
   const handleCameraClick = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
-  // Convert selected file to Base64 preview & persist to state
-  const handleFileChange = (e) => {
+  // Uploads the picked file straight to Supabase Storage
+  // (the `avatars` bucket) and saves the resulting URL.
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const updatedData = { ...formData, avatarUrl: reader.result };
-        setFormData(updatedData);
-        
-        // Save avatar immediately if parent updater function exists
-        if (typeof setUserProfile === "function") {
-          setUserProfile(updatedData);
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    setMessage({ type: "", text: "" });
+
+    try {
+      const updatedProfile = await uploadAvatar(file);
+      setFormData((prev) => ({ ...prev, avatar_url: updatedProfile.avatar_url }));
+      await refreshProfile();
+
+      setMessage({ type: "success", text: "Profile photo updated." });
+    } catch (err) {
+      console.error("Failed to upload avatar:", err);
+      setMessage({ type: "error", text: err.message || "Failed to upload photo." });
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
   const handleEditClick = (e) => {
     e.preventDefault();
     setIsEditing(true);
+    setMessage({ type: "", text: "" });
   };
 
   const handleCancelClick = (e) => {
@@ -72,12 +85,27 @@ export default function Profile({ setPages, userProfile, setUserProfile }) {
     setIsEditing(false);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (typeof setUserProfile === "function") {
-      setUserProfile(formData);
+    setSaving(true);
+    setMessage({ type: "", text: "" });
+
+    try {
+      if (typeof setUserProfile === "function") {
+        await setUserProfile({
+          full_name: formData.full_name,
+          phone: formData.phone,
+          location: formData.location,
+        });
+      }
+      setIsEditing(false);
+      setMessage({ type: "success", text: "Profile updated." });
+    } catch (err) {
+      console.error("Failed to save profile:", err);
+      setMessage({ type: "error", text: err.message || "Failed to save changes." });
+    } finally {
+      setSaving(false);
     }
-    setIsEditing(false);
   };
 
   const getInitials = (name) => {
@@ -102,20 +130,32 @@ export default function Profile({ setPages, userProfile, setUserProfile }) {
         </p>
       </div>
 
+      {message.text && (
+        <div
+          className={`max-w-4xl mb-5 p-3 rounded-lg text-sm ${
+            message.type === "error"
+              ? "bg-red-100 text-red-700"
+              : "bg-green-100 text-green-800"
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+
       <div className="max-w-4xl space-y-6">
         {/* Profile Card */}
         <div className="bg-white rounded-lg p-6 shadow-sm flex flex-col sm:flex-row items-center gap-6">
           <div className="relative">
             {/* Avatar Preview OR Initials */}
             <div className="w-24 h-24 rounded-full bg-amber-600 text-white flex items-center justify-center font-bold text-3xl shadow overflow-hidden">
-              {formData.avatarUrl ? (
+              {formData.avatar_url ? (
                 <img
-                  src={formData.avatarUrl}
+                  src={formData.avatar_url}
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />
               ) : (
-                getInitials(formData.fullName)
+                getInitials(formData.full_name)
               )}
             </div>
 
@@ -132,7 +172,8 @@ export default function Profile({ setPages, userProfile, setUserProfile }) {
             <button
               type="button"
               onClick={handleCameraClick}
-              className="absolute bottom-0 right-0 bg-forest text-white p-2 rounded-full shadow hover:opacity-90 transition-opacity cursor-pointer"
+              disabled={uploadingAvatar}
+              className="absolute bottom-0 right-0 bg-forest text-white p-2 rounded-full shadow hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-60"
               title="Upload photo"
             >
               <CiCamera className="text-lg" />
@@ -141,9 +182,9 @@ export default function Profile({ setPages, userProfile, setUserProfile }) {
 
           <div className="text-center sm:text-left space-y-1">
             <h2 className="text-xl font-bold text-gray-900">
-              {formData.fullName}
+              {formData.full_name}
             </h2>
-            <p className="text-sm text-gray-500">{formData.role}</p>
+            <p className="text-sm text-gray-500 capitalize">{formData.role || "reporter"}</p>
             <span className="inline-block bg-green-100 text-green-800 text-xs px-2.5 py-0.5 rounded-full font-medium">
               Verified Reporter
             </span>
@@ -177,63 +218,74 @@ export default function Profile({ setPages, userProfile, setUserProfile }) {
                 {isEditing ? (
                   <input
                     type="text"
-                    name="fullName"
-                    value={formData.fullName || ""}
+                    name="full_name"
+                    value={formData.full_name || ""}
                     onChange={handleChange}
                     className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest"
                     required
                   />
                 ) : (
                   <p className="text-sm font-semibold text-gray-800 py-1">
-                    {formData.fullName}
+                    {formData.full_name}
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Email Address */}
+            {/* Email Address - read only, changed from Settings */}
             <div className="flex items-start gap-3">
               <GoMail className="text-xl text-forest mt-2 shrink-0" />
               <div className="w-full">
                 <label className="block text-xs text-gray-400 font-medium uppercase mb-1">
                   Email Address
                 </label>
+                <p className="text-sm font-semibold text-gray-800 py-1">
+                  {user?.email}
+                </p>
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div className="flex items-start gap-3">
+              <GoDeviceMobile className="text-xl text-forest mt-2 shrink-0" />
+              <div className="w-full">
+                <label className="block text-xs text-gray-400 font-medium uppercase mb-1">
+                  Phone
+                </label>
                 {isEditing ? (
                   <input
-                    type="email"
-                    name="email"
-                    value={formData.email || ""}
+                    type="text"
+                    name="phone"
+                    value={formData.phone || ""}
                     onChange={handleChange}
                     className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest"
-                    required
                   />
                 ) : (
                   <p className="text-sm font-semibold text-gray-800 py-1">
-                    {formData.email}
+                    {formData.phone || "Not set"}
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Address */}
+            {/* Location */}
             <div className="flex items-start gap-3">
               <GoLocation className="text-xl text-forest mt-2 shrink-0" />
               <div className="w-full">
                 <label className="block text-xs text-gray-400 font-medium uppercase mb-1">
-                  Address
+                  Location
                 </label>
                 {isEditing ? (
                   <input
                     type="text"
-                    name="address"
-                    value={formData.address || ""}
+                    name="location"
+                    value={formData.location || ""}
                     onChange={handleChange}
                     className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest"
-                    required
                   />
                 ) : (
                   <p className="text-sm font-semibold text-gray-800 py-1">
-                    {formData.address}
+                    {formData.location}
                   </p>
                 )}
               </div>
@@ -247,7 +299,7 @@ export default function Profile({ setPages, userProfile, setUserProfile }) {
                   Reporter ID
                 </label>
                 <p className="text-sm font-semibold text-gray-800 py-1">
-                  {formData.reporterId}
+                  {formData.id ? `CA-${formData.id.slice(0, 8).toUpperCase()}` : "—"}
                 </p>
               </div>
             </div>
@@ -259,9 +311,10 @@ export default function Profile({ setPages, userProfile, setUserProfile }) {
               <>
                 <button
                   type="submit"
-                  className="bg-forest text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer"
+                  disabled={saving}
+                  className="bg-forest disabled:opacity-60 text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer"
                 >
-                  Save Changes
+                  {saving ? "Saving..." : "Save Changes"}
                 </button>
                 <button
                   type="button"

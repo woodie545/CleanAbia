@@ -1,52 +1,65 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Aside from './aside'
 import Main from './main'
-import { getAvailableJobs, acceptJob } from '../services/jobs'
-import { getMyProfile } from '../services/profiles'
+import { getAvailableJobs, getMyJobs, acceptJob, completeJob } from '../services/jobs'
+import { getMyEarnings } from '../services/transactions'
+import { useAuth } from '../hooks/useAuth'
 
 export default function Agents() {
   const [pages, setPages] = useState('Overview')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  
-  const [profile, setProfile] = useState(null)
+
+  const { profile, profileLoading } = useAuth()
   const [jobs, setJobs] = useState([])
+  const [myJobs, setMyJobs] = useState([])
+  const [earnings, setEarnings] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Fetch initial profile and available jobs from Supabase
-  useEffect(() => {
-    async function loadAgentData() {
-      try {
-        setLoading(true)
-        setError(null)
+  // Profile comes from AuthProvider (already loaded on sign-in),
+  // so this only needs to load jobs/earnings from Supabase.
+  const loadDashboardData = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-    const [profileData, jobsData] = await Promise.all([
-      getMyProfile(),
-      getAvailableJobs()
-    ])
+      const [jobsData, myJobsData, earningsData] = await Promise.all([
+        getAvailableJobs(),
+        getMyJobs(),
+        getMyEarnings(),
+      ])
 
-        setProfile(profileData)
-        setJobs(jobsData || [])
-      } catch (err) {
-        console.error("Error loading agent dashboard data:", err)
-        setError("Failed to load dashboard data. Please refresh.")
-      } finally {
-        setLoading(false)
-      }
+      setJobs(jobsData || [])
+      setMyJobs(myJobsData || [])
+      setEarnings(earningsData)
+    } catch (err) {
+      console.error("Error loading agent dashboard data:", err)
+      setError("Failed to load dashboard data. Please refresh.")
+    } finally {
+      setLoading(false)
     }
-
-    loadAgentData()
   }, [])
 
-  // Handler for accepting a job
+  useEffect(() => {
+    loadDashboardData()
+  }, [loadDashboardData])
+
   const handleAcceptJob = async (jobId) => {
     try {
       await acceptJob(jobId)
-      // Refresh available jobs after accepting
-      const updatedJobs = await getAvailableJobs()
-      setJobs(updatedJobs || [])
+      await loadDashboardData()
     } catch (err) {
       console.error("Failed to accept job:", err)
+      throw err
+    }
+  }
+
+  const handleCompleteJob = async (jobId) => {
+    try {
+      await completeJob(jobId)
+      await loadDashboardData()
+    } catch (err) {
+      console.error("Failed to complete job:", err)
       throw err
     }
   }
@@ -55,7 +68,7 @@ export default function Agents() {
     setIsMobileMenuOpen(prev => !prev)
   }
 
-  if (loading) {
+  if (loading || profileLoading) {
     return (
       <div className='min-h-screen w-full flex items-center justify-center bg-gray-50'>
         <p className='text-gray-600 font-medium'>Loading agent dashboard...</p>
@@ -82,9 +95,11 @@ export default function Agents() {
             pages={pages}
             toggleMobileMenu={toggleMobileMenu}
             profile={profile}
-            setProfile={setProfile}
             jobs={jobs}
+            myJobs={myJobs}
+            earnings={earnings}
             onAcceptJob={handleAcceptJob}
+            onCompleteJob={handleCompleteJob}
             error={error}
           />
         </main>

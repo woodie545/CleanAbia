@@ -29,6 +29,42 @@ export async function getMyProfile() {
 }
 
 
+export async function uploadAvatar(file) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('You must be logged in.')
+  }
+
+  const extension =
+    file.name.split('.').pop()
+
+  const filePath =
+    `${user.id}/${crypto.randomUUID()}.${extension}`
+
+  const { error: uploadError } =
+    await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, {
+        upsert: true,
+      })
+
+  if (uploadError) {
+    throw uploadError
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(filePath)
+
+  return updateMyProfile({ avatar_url: publicUrl })
+}
+
+
 export async function updateMyProfile(updates) {
   const {
     data: { user },

@@ -546,7 +546,18 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  requested_role text;
 begin
+
+  -- Only 'reporter' or 'agent' can be self-selected at sign up.
+  -- 'admin' can never be granted this way, regardless of what a
+  -- client sends in the metadata.
+  requested_role := new.raw_user_meta_data ->> 'role';
+
+  if requested_role not in ('reporter', 'agent') then
+    requested_role := 'reporter';
+  end if;
 
   insert into public.profiles (
     id,
@@ -559,7 +570,7 @@ begin
       new.raw_user_meta_data ->> 'full_name',
       ''
     ),
-    'reporter'
+    requested_role
   );
 
   return new;

@@ -9,19 +9,23 @@ import {
   LuCheck,
   LuX,
 } from "react-icons/lu";
+import { useAuth } from "../../../hooks/useAuth";
+import { signIn, updateAuthUser } from "../../../services/auth";
 
+// Note: email notification / SMS alert preferences aren't stored
+// anywhere in the schema yet (no columns for them on `profiles`),
+// so those two toggles are local-only for now and don't persist.
 export default function Settings({ userProfile = {}, setUserProfile }) {
-  // Local state for account information with safe fallbacks
+  const { user } = useAuth();
+
   const [formData, setFormData] = useState({
-    fullName: userProfile?.fullName || "Chidinma Okafor",
-    email: userProfile?.email || "chidinma.okafor@example.com",
-    address: userProfile?.address || "15 Brass Street, Aba",
+    full_name: userProfile?.full_name || "",
+    email: user?.email || "",
+    location: userProfile?.location || "",
   });
 
-  const [notifications, setNotifications] = useState(
-    userProfile?.notifications ?? true,
-  );
-  const [smsAlerts, setSmsAlerts] = useState(userProfile?.smsAlerts ?? false);
+  const [notifications, setNotifications] = useState(true);
+  const [smsAlerts, setSmsAlerts] = useState(false);
 
   const [passwords, setPasswords] = useState({
     currentPassword: "",
@@ -33,24 +37,17 @@ export default function Settings({ userProfile = {}, setUserProfile }) {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  const [saving, setSaving] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
 
   useEffect(() => {
-    if (userProfile) {
-      setFormData({
-        fullName: userProfile.fullName || "",
-        email: userProfile.email || "",
-        address: userProfile.address || "",
-      });
-      if (userProfile.notifications !== undefined) {
-        setNotifications(userProfile.notifications);
-      }
-      if (userProfile.smsAlerts !== undefined) {
-        setSmsAlerts(userProfile.smsAlerts);
-      }
-    }
-  }, [userProfile]);
+    setFormData({
+      full_name: userProfile?.full_name || "",
+      email: user?.email || "",
+      location: userProfile?.location || "",
+    });
+  }, [userProfile, user]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -69,24 +66,22 @@ export default function Settings({ userProfile = {}, setUserProfile }) {
   const triggerPopup = (type, text) => {
     setStatusMessage({ type, text });
     setShowPopup(true);
-    setTimeout(() => setShowPopup(false), 3000);
+    setTimeout(() => setShowPopup(false), 4000);
   };
 
-  const handleSaveAll = (e) => {
+  const handleSaveAll = async (e) => {
     e.preventDefault();
 
     const { currentPassword, newPassword, confirmPassword } = passwords;
+    const isChangingPassword = currentPassword || newPassword || confirmPassword;
 
-    if (currentPassword || newPassword || confirmPassword) {
+    if (isChangingPassword) {
       if (!currentPassword) {
         triggerPopup("error", "Please enter your current password.");
         return;
       }
       if (newPassword.length < 6) {
-        triggerPopup(
-          "error",
-          "New password must be at least 6 characters long.",
-        );
+        triggerPopup("error", "New password must be at least 6 characters long.");
         return;
       }
       if (newPassword !== confirmPassword) {
@@ -95,17 +90,49 @@ export default function Settings({ userProfile = {}, setUserProfile }) {
       }
     }
 
-    if (setUserProfile) {
-      setUserProfile((prev) => ({
-        ...prev,
-        ...formData,
-        notifications,
-        smsAlerts,
-      }));
-    }
+    setSaving(true);
 
-    setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    triggerPopup("success", "Saved successfully!");
+    try {
+      // Profile fields (name/location) go through the profiles table.
+      if (typeof setUserProfile === "function") {
+        await setUserProfile({
+          full_name: formData.full_name,
+          location: formData.location,
+        });
+      }
+
+      // Email change goes through Supabase Auth, and typically
+      // requires the person to confirm via a link sent to their
+      // new (and sometimes old) address before it takes effect.
+      if (formData.email && formData.email !== user?.email) {
+        await updateAuthUser({ email: formData.email });
+      }
+
+      // Password change: verify the current password first by
+      // signing in with it, then apply the new one.
+      if (isChangingPassword) {
+        await signIn(user.email, currentPassword);
+        await updateAuthUser({ password: newPassword });
+      }
+
+      setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      triggerPopup(
+        "success",
+        formData.email !== user?.email
+          ? "Saved! Check your inbox to confirm your new email."
+          : "Saved successfully!"
+      );
+    } catch (err) {
+      console.error("Failed to save settings:", err);
+      triggerPopup(
+        "error",
+        err.message?.includes("Invalid login")
+          ? "Current password is incorrect."
+          : err.message || "Something went wrong. Please try again."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -157,8 +184,8 @@ export default function Settings({ userProfile = {}, setUserProfile }) {
               </label>
               <input
                 type="text"
-                name="fullName"
-                value={formData.fullName}
+                name="full_name"
+                value={formData.full_name}
                 onChange={handleInputChange}
                 className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest"
                 required
@@ -176,15 +203,18 @@ export default function Settings({ userProfile = {}, setUserProfile }) {
                 className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest"
                 required
               />
+              <p className="text-xs text-gray-400 mt-1">
+                Changing this sends a confirmation link to your new address.
+              </p>
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Address
+                Location
               </label>
               <input
                 type="text"
-                name="address"
-                value={formData.address}
+                name="location"
+                value={formData.location}
                 onChange={handleInputChange}
                 className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest"
                 required
@@ -290,6 +320,11 @@ export default function Settings({ userProfile = {}, setUserProfile }) {
             </h2>
           </div>
 
+          <p className="text-xs text-amber-700 bg-amber-50 rounded-lg p-2.5">
+            Notification preferences aren't wired up to the backend yet -
+            these toggles are just a preview for now.
+          </p>
+
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
@@ -331,14 +366,14 @@ export default function Settings({ userProfile = {}, setUserProfile }) {
         <div className="flex justify-end">
           <button
             type="submit"
-            disabled={isPasswordMismatch}
+            disabled={isPasswordMismatch || saving}
             className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-opacity shadow-sm cursor-pointer ${
-              isPasswordMismatch
+              isPasswordMismatch || saving
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "bg-forest text-white hover:opacity-90"
             }`}
           >
-            Save Changes
+            {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </form>

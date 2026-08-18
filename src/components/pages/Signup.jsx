@@ -9,8 +9,8 @@ export default function Signup() {
     <div>
       
        {page === "userRoles" && <UserRoles setPage={setPage}/>}
-        {page === "Reporter" && <SignReporter/>}
-        {page === "Agent" && <SignAgent/>}
+        {page === "Reporter" && <SignReporter setPage={setPage}/>}
+        {page === "Agent" && <SignAgent setPage={setPage}/>}
     </div>
   )
 }

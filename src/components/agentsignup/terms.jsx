@@ -1,10 +1,10 @@
 import React from 'react'
 import { SECTIONS } from './array';
-import { Link } from 'react-router';
-import { FaArrowLeft } from 'react-icons/fa';
+import { useNavigate } from 'react-router';
 import { IoIosArrowRoundBack } from 'react-icons/io';
 
-export default function terms({setPage}) {
+export default function Terms({setPage}) {
+  const nav = useNavigate()
   return (
     <div className='pt-10 font-sans bg-[#F3F5EE]'>
       <div className='md:pl-15 px-4 border-b border-gray-300 pb-10 mb-5'>
@@ -323,7 +323,7 @@ export default function terms({setPage}) {
                 <a
                   href="#"
                   style={{ color: "var(--color-forest)", fontWeight: 600 }}
-                  onClick={(e) => { e.preventDefault(); nav("home"); }}
+                  onClick={(e) => { e.preventDefault(); nav("/contact"); }}
                 >
                   Contact page
                 </a>.

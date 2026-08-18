@@ -18,6 +18,10 @@ import SignAgent from './components/SignUp/SignAgent'
 import SignReporter from './components/SignUp/SignReporter'
 import About from './components/pages/About'
 import ForgotPassword from './components/Login/ForgotPassword'
+import ProtectedRoute from './components/ProtectedRoute'
+import ReporterDashboard from './components/ReporterDashboard/ReporterDashboard'
+import AdminDashboard from './components/Admin/AdminDashboard'
+import AgentDashboard from './cleanAbia/Agents'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -86,7 +90,34 @@ function App() {
             <Route key={idx} path={n.path} element={n.element}/>
           ))}
       </Route>
-    
+
+      <Route
+        path='/reporter'
+        element={
+          <ProtectedRoute allowedRoles={['reporter']}>
+            <ReporterDashboard/>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path='/agent'
+        element={
+          <ProtectedRoute allowedRoles={['agent']}>
+            <AgentDashboard/>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path='/admin'
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminDashboard/>
+          </ProtectedRoute>
+        }
+      />
+
    </Routes>
   )
 }

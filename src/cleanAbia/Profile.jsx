@@ -1,21 +1,36 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { FiPhone } from 'react-icons/fi'
-import { IoIdCardOutline, IoLocationOutline } from 'react-icons/io5'
+import { IoIdCardOutline, IoLocationOutline, IoCameraOutline } from 'react-icons/io5'
 import { MdOutlineEmail } from 'react-icons/md'
+import { useAuth } from '../hooks/useAuth'
+import { updateMyProfile, uploadAvatar } from '../services/profiles'
+import { getMyAgentProfile } from '../services/agentProfiles'
 
-export default function Profile({ profile, setProfile }) {
-  // Controls edit mode
+// Field names below match the `profiles` table (full_name, phone,
+// location, avatar_url). Agent-specific info (agent_code,
+// verification) comes from `agent_profiles` separately.
+export default function Profile() {
+  const { user, profile, refreshProfile } = useAuth()
+
   const [isEditing, setIsEditing] = useState(false)
+  const [formData, setFormData] = useState(profile || {})
+  const [agentProfile, setAgentProfile] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [message, setMessage] = useState({ type: '', text: '' })
 
-  // Initialize temporary form data with profile prop
-  const [formData, setFormData] = useState(profile)
+  const fileInputRef = useRef(null)
 
-  // Keep form data synchronized if the profile prop changes externally
   useEffect(() => {
-    setFormData(profile)
+    setFormData(profile || {})
   }, [profile])
 
-  // Extract initials dynamically from name
+  useEffect(() => {
+    getMyAgentProfile()
+      .then(setAgentProfile)
+      .catch((err) => console.error('Failed to load agent profile:', err))
+  }, [])
+
   const getInitials = (name) => {
     if (!name) return 'EO'
     const parts = name.trim().split(' ')
@@ -25,7 +40,6 @@ export default function Profile({ profile, setProfile }) {
     return parts[0][0]?.toUpperCase() || 'EO'
   }
 
-  // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({
@@ -34,21 +48,55 @@ export default function Profile({ profile, setProfile }) {
     }))
   }
 
-  // Save the changes back to parent state
-  const handleSave = () => {
-    setProfile(formData) // Updates state in Agents.jsx -> syncs Aside & Abiaproj
-    setIsEditing(false)
+  const handleAvatarClick = () => fileInputRef.current?.click()
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    setUploadingAvatar(true)
+    setMessage({ type: '', text: '' })
+
+    try {
+      await uploadAvatar(file)
+      await refreshProfile()
+      setMessage({ type: 'success', text: 'Profile photo updated.' })
+    } catch (err) {
+      console.error('Failed to upload avatar:', err)
+      setMessage({ type: 'error', text: err.message || 'Failed to upload photo.' })
+    } finally {
+      setUploadingAvatar(false)
+    }
   }
 
-  // Cancel editing
+  const handleSave = async () => {
+    setSaving(true)
+    setMessage({ type: '', text: '' })
+
+    try {
+      await updateMyProfile({
+        full_name: formData.full_name,
+        phone: formData.phone,
+        location: formData.location,
+      })
+      await refreshProfile()
+      setIsEditing(false)
+      setMessage({ type: 'success', text: 'Profile updated.' })
+    } catch (err) {
+      console.error('Failed to save profile:', err)
+      setMessage({ type: 'error', text: err.message || 'Failed to save changes.' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleCancel = () => {
-    setFormData(profile)
+    setFormData(profile || {})
     setIsEditing(false)
   }
 
   return (
     <div className='bg-[#E4EEE7] min-h-screen w-full px-4 sm:px-6 md:px-10 lg:px-16 xl:px-25 pt-6 sm:pt-8 pb-10 overflow-x-hidden'>
-      {/* Page heading */}
       <h1 className='text-xl sm:text-2xl font-bold text-[#123A28]'>
         Agent Profile
       </h1>
@@ -57,7 +105,18 @@ export default function Profile({ profile, setProfile }) {
         Manage your personal information and account settings.
       </p>
 
-      {/* PROFILE CARD */}
+      {message.text && (
+        <div
+          className={`mt-4 max-w-4xl p-3 rounded-xl text-sm ${
+            message.type === 'error'
+              ? 'bg-red-100 text-red-700'
+              : 'bg-green-100 text-green-800'
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+
       <section className='mt-5 bg-white px-4 sm:px-6 md:px-8 pt-4 sm:pt-5 rounded-2xl pb-8 sm:pb-10 w-full max-w-4xl shadow-sm'>
         <p className='text-base sm:text-lg font-bold text-[#123A28]'>
           Personal information
@@ -65,79 +124,98 @@ export default function Profile({ profile, setProfile }) {
 
         {/* PROFILE HEADER */}
         <div className='flex flex-col items-center mb-6 mt-5'>
-          {profile?.image ? (
-            <img
-              src={profile.image}
-              alt={profile?.name}
-              className='w-20 h-20 rounded-full object-cover mb-4'
+          <div className='relative'>
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={profile?.full_name}
+                className='w-20 h-20 rounded-full object-cover mb-4'
+              />
+            ) : (
+              <div className='bg-[#123A28] text-white p-5 rounded-full text-center w-20 h-20 flex items-center justify-center mb-4 font-bold text-xl'>
+                {getInitials(profile?.full_name)}
+              </div>
+            )}
+            <input
+              type='file'
+              ref={fileInputRef}
+              onChange={handleAvatarChange}
+              accept='image/*'
+              className='hidden'
             />
-          ) : (
-            <div className='bg-[#123A28] text-white p-5 rounded-full text-center w-20 h-20 flex items-center justify-center mb-4 font-bold text-xl'>
-              {getInitials(profile?.name)}
-            </div>
-          )}
+            <button
+              type='button'
+              onClick={handleAvatarClick}
+              disabled={uploadingAvatar}
+              className='absolute bottom-3 right-0 bg-[#123A28] text-white p-1.5 rounded-full shadow disabled:opacity-60'
+              title='Upload photo'
+            >
+              <IoCameraOutline />
+            </button>
+          </div>
 
           <p className='text-lg sm:text-xl font-bold mb-2 text-center text-gray-800 break-words'>
-            {profile?.name}
+            {profile?.full_name}
           </p>
 
           <div className='flex gap-2'>
-            <p className='bg-green-100 text-green-800 rounded-full font-medium px-3 py-1.5 text-xs sm:text-sm'>
-              Verified Agent
+            <p
+              className={`rounded-full font-medium px-3 py-1.5 text-xs sm:text-sm ${
+                agentProfile?.is_verified
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-amber-100 text-amber-800'
+              }`}
+            >
+              {agentProfile?.is_verified ? 'Verified Agent' : 'Verification pending'}
             </p>
           </div>
         </div>
 
-        {/* VIEW PROFILE MODE */}
+        {/* VIEW MODE */}
         {!isEditing && (
           <>
             <div className='space-y-4 sm:space-y-5'>
-              {/* Agent ID */}
               <div className='flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 border-b border-gray-100 pb-4'>
                 <div className='flex gap-3 text-gray-500 items-center'>
                   <IoIdCardOutline className='text-xl text-[#123A28] shrink-0' />
                   <p>Agent ID</p>
                 </div>
                 <p className='font-medium text-sm sm:text-base text-[#123A28] break-all sm:text-right'>
-                  AGT-2024-00158
+                  {agentProfile?.agent_code || 'Pending assignment'}
                 </p>
               </div>
 
-              {/* Phone */}
               <div className='flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 border-b border-gray-100 pb-4'>
                 <div className='flex gap-3 text-gray-500 items-center'>
                   <FiPhone className='text-xl text-[#123A28] shrink-0' />
                   <p>Phone</p>
                 </div>
                 <p className='font-medium text-sm sm:text-base text-[#123A28] break-all sm:text-right'>
-                  {profile?.phone}
+                  {profile?.phone || 'Not set'}
                 </p>
               </div>
 
-              {/* Email */}
               <div className='flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 border-b border-gray-100 pb-4'>
                 <div className='flex gap-3 text-gray-500 items-center'>
                   <MdOutlineEmail className='text-xl text-[#123A28] shrink-0' />
                   <p>Email</p>
                 </div>
                 <p className='font-medium text-sm sm:text-base text-[#123A28] break-all sm:text-right'>
-                  {profile?.email}
+                  {user?.email}
                 </p>
               </div>
 
-              {/* Location */}
               <div className='flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2'>
                 <div className='flex gap-3 items-center text-gray-500'>
                   <IoLocationOutline className='text-xl text-[#123A28] shrink-0' />
                   <p>Location</p>
                 </div>
                 <p className='font-medium text-sm sm:text-base text-[#123A28] sm:text-right break-words'>
-                  {profile?.location}
+                  {profile?.location || 'Not set'}
                 </p>
               </div>
             </div>
 
-            {/* Edit button */}
             <div className='border-2 border-[#123A28] text-[#123A28] py-2.5 rounded-xl text-center mt-7 hover:bg-[#123A28] hover:text-white transition-colors'>
               <button
                 onClick={() => setIsEditing(true)}
@@ -149,24 +227,22 @@ export default function Profile({ profile, setProfile }) {
           </>
         )}
 
-        {/* EDIT PROFILE MODE */}
+        {/* EDIT MODE */}
         {isEditing && (
           <div className='space-y-4 sm:space-y-5 mt-6'>
-            {/* Name */}
             <div>
               <label className='block font-medium mb-2 text-sm sm:text-base text-gray-700'>
                 Full Name
               </label>
               <input
                 type='text'
-                name='name'
-                value={formData?.name || ''}
+                name='full_name'
+                value={formData?.full_name || ''}
                 onChange={handleChange}
                 className='w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-3 text-sm sm:text-base outline-none focus:border-[#123A28] focus:ring-1 focus:ring-[#123A28]'
               />
             </div>
 
-            {/* Phone */}
             <div>
               <label className='block font-medium mb-2 text-sm sm:text-base text-gray-700'>
                 Phone
@@ -180,21 +256,6 @@ export default function Profile({ profile, setProfile }) {
               />
             </div>
 
-            {/* Email */}
-            <div>
-              <label className='block font-medium mb-2 text-sm sm:text-base text-gray-700'>
-                Email
-              </label>
-              <input
-                type='email'
-                name='email'
-                value={formData?.email || ''}
-                onChange={handleChange}
-                className='w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-3 text-sm sm:text-base outline-none focus:border-[#123A28] focus:ring-1 focus:ring-[#123A28]'
-              />
-            </div>
-
-            {/* Location */}
             <div>
               <label className='block font-medium mb-2 text-sm sm:text-base text-gray-700'>
                 Location
@@ -208,7 +269,6 @@ export default function Profile({ profile, setProfile }) {
               />
             </div>
 
-            {/* Action Buttons */}
             <div className='flex flex-col sm:flex-row gap-3 pt-3'>
               <button
                 onClick={handleCancel}
@@ -219,9 +279,10 @@ export default function Profile({ profile, setProfile }) {
 
               <button
                 onClick={handleSave}
-                className='w-full sm:flex-1 bg-[#123A28] text-white py-3 rounded-xl font-bold hover:bg-[#1E5B3E] transition'
+                disabled={saving}
+                className='w-full sm:flex-1 bg-[#123A28] disabled:opacity-60 text-white py-3 rounded-xl font-bold hover:bg-[#1E5B3E] transition'
               >
-                Save changes
+                {saving ? 'Saving...' : 'Save changes'}
               </button>
             </div>
           </div>

@@ -1,36 +1,28 @@
 import React, { useState, useEffect } from "react";
 import Aside from "./Aside";
 import SemiMain from "./SemiMain";
-import { getMyReports } from '../../services/reports'
-import {
-  getMyProfile,
-  updateMyProfile,
-} from '../../services/profiles'
+import { getMyReports } from '../../services/reports';
+import { updateMyProfile } from '../../services/profiles';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function ReporterDashboard() {
   const [pages, setPages] = useState("overview");
-  
-  // State management
-  const [userProfile, setUserProfile] = useState(null);
+
+  // Profile comes from AuthProvider (loaded on sign-in).
+  const { profile: userProfile, profileLoading, refreshProfile } = useAuth();
   const [reports, setReports] = useState([]);
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch user profile and reports from Supabase on mount
+  // Fetch this reporter's reports from Supabase on mount.
   useEffect(() => {
     async function loadDashboardData() {
       try {
         setLoading(true);
         setError(null);
 
-        // Fetch profile and reports in parallel
-        const [profileData, reportsData] = await Promise.all([
-          getMyProfile(),
-          getMyReports()
-        ]);
-
-        setUserProfile(profileData);
+        const reportsData = await getMyReports();
         setReports(reportsData || []);
       } catch (err) {
         console.error("Error loading dashboard data from Supabase:", err);
@@ -43,18 +35,21 @@ export default function ReporterDashboard() {
     loadDashboardData();
   }, []);
 
-  // Helper function to update profile directly via Supabase service
+  // Persists profile edits to Supabase, then refreshes the
+  // shared profile in AuthProvider so every part of the
+  // dashboard (sidebar, overview, etc.) stays in sync.
   const handleProfileUpdate = async (updatedFields) => {
     try {
       const updatedProfile = await updateMyProfile(updatedFields);
-      setUserProfile(updatedProfile);
+      await refreshProfile();
+      return updatedProfile;
     } catch (err) {
       console.error("Failed to update profile:", err);
       throw err;
     }
   };
 
-  if (loading) {
+  if (loading || profileLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-forest-tint">
         <div className="text-lg font-medium text-gray-700">Loading dashboard...</div>

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FiGrid,
   FiCamera,
@@ -12,53 +13,79 @@ import {
   FiX,
   FiChevronDown,
 } from "react-icons/fi";
+import { useAuth } from "../../hooks/useAuth";
+import {
+  getAllReports,
+  getAllAgents,
+  getAllReporters,
+  getAllWithdrawals,
+  getAllJobs,
+  getAllRecyclingCentres,
+  confirmReport,
+  rejectReport,
+  verifyAgent,
+  rejectAgent,
+  updateWithdrawalStatus,
+  createRecyclingCentre,
+  setRecyclingCentreActive,
+} from "../../services/admin";
 
 /* =========================================================
-   REPORT IMAGES
+   FORMAT HELPERS
 ========================================================= */
 
-const reportImages = [
-  "/report-ogbor.jpg",
-  "/report-world-bank.jpg",
-  "/report-ariaria.jpg",
-];
+function timeAgo(dateString) {
+  if (!dateString) return "";
+  const diffMs = Date.now() - new Date(dateString).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr${hrs === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
 
-/* =========================================================
-   REPORT DATA
-========================================================= */
+function formatDate(dateString) {
+  if (!dateString) return "—";
+  return new Date(dateString).toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
+}
 
-const reports = [
-  {
-    id: 1,
-    site: "Ogbor Hill Rd, Aba South",
-    issue: "Overflowing bin",
-    reporter: "Chidinma O.",
-    submitted: "4 min ago",
-    image: reportImages[0],
-    description:
-      "An overflowing waste bin has been reported at Ogbor Hill Road, Aba South.",
-  },
-  {
-    id: 2,
-    site: "World Bank Housing Estate",
-    issue: "Illegal dumping",
-    reporter: "Tochukwu I.",
-    submitted: "19 min ago",
-    image: reportImages[1],
-    description:
-      "Waste has been illegally dumped around the World Bank Housing Estate.",
-  },
-  {
-    id: 3,
-    site: "Ariaria Market, Rear Gate",
-    issue: "Blocked gutter",
-    reporter: "Blessing A.",
-    submitted: "33 min ago",
-    image: reportImages[2],
-    description:
-      "A blocked drainage gutter was reported at the rear gate of Ariaria Market.",
-  },
-];
+function formatCurrency(amount) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(amount || 0);
+}
+
+const CATEGORY_LABELS = {
+  overflowing_bin: "Overflowing bin",
+  illegal_dumping: "Illegal dumping",
+  blocked_drainage: "Blocked drainage",
+  drainage_clearance: "Drainage clearance",
+  waste_collection: "Waste collection",
+  other: "Other",
+};
+
+// Adapts a raw `reports` row (+ joined profile/images) into the
+// shape ReportRow/ImagePreviewModal expect.
+function mapReportForDisplay(report) {
+  return {
+    id: report.id,
+    site: report.address || report.title,
+    issue: CATEGORY_LABELS[report.category] || report.category,
+    reporter: report.profiles?.full_name || "Unknown reporter",
+    submitted: timeAgo(report.created_at),
+    image: report.report_images?.[0]?.public_url || "/logo.svg",
+    description: report.description || "No description provided.",
+    status: report.status,
+  };
+}
 
 /* =========================================================
    SIDEBAR NAVIGATION
@@ -75,33 +102,6 @@ const navItems = [
 ];
 
 /* =========================================================
-   OVERVIEW STATS
-========================================================= */
-
-const stats = [
-  {
-    title: "Pending review",
-    value: "11",
-    text: "Avg. 22 min to confirm",
-  },
-  {
-    title: "Active agents",
-    value: "142",
-    text: "37 online now",
-  },
-  {
-    title: "Waste collected (mo.)",
-    value: "18.4t",
-    text: "≈ 6.1t recycled",
-  },
-  {
-    title: "Payouts (mo.)",
-    value: "₦4.2M",
-    text: "Reporters + Agents",
-  },
-];
-
-/* =========================================================
    SIDEBAR
 ========================================================= */
 
@@ -111,11 +111,23 @@ function Sidebar({
   activePage,
   onNavigate,
 }) {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
   const handleNavigation = (label) => {
     onNavigate(label);
 
     if (mobile && closeMenu) {
       closeMenu();
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate("/login");
+    } catch (err) {
+      console.error("Failed to log out:", err);
     }
   };
 
@@ -181,7 +193,10 @@ function Sidebar({
 
       {/* BOTTOM SIDEBAR */}
       <div className="mt-auto shrink-0 px-6.25 pb-7">
-        <button className="h-8.5 w-full rounded-full border border-[#78978a] text-sm font-semibold text-white transition hover:bg-[#174d3a]">
+        <button
+          onClick={handleLogout}
+          className="h-8.5 w-full rounded-full border border-[#78978a] text-sm font-semibold text-white transition hover:bg-[#174d3a]"
+        >
           Log out
         </button>
 
@@ -498,7 +513,7 @@ function ReportRow({
    CONFIRMATION TOAST
 ========================================================= */
 
-function ConfirmationToast({ onClose }) {
+function ConfirmationToast({ onClose, message }) {
   return (
     <div className="fixed bottom-6 right-6 z-110 w-300px rounded-xl border border-[#dfe3dc] bg-white p-4 shadow-xl">
       <div className="flex items-start">
@@ -508,7 +523,7 @@ function ConfirmationToast({ onClose }) {
           </p>
 
           <p className="mt-1 text-[13px] leading-[1.35] text-[#60716a]">
-            Job dispatched to 14 nearby agents.
+            {message || "Job dispatched to nearby agents."}
           </p>
         </div>
 
@@ -542,12 +557,52 @@ function DashboardCard({ children, className = "" }) {
    OVERVIEW PAGE
 ========================================================= */
 
-function OverviewPage({ onMenu }) {
+function OverviewPage({ onMenu, reports, agents, jobs, withdrawals }) {
+  const pendingReports = reports.filter((r) => r.status === "pending");
+  const verifiedAgents = agents.filter((a) => a.is_verified);
+  const openJobs = jobs.filter((j) => j.status === "open" || j.status === "assigned");
+  const inProgressJobs = jobs.filter((j) => j.status === "accepted" || j.status === "in_progress");
+
+  const monthlyPayouts = withdrawals
+    .filter((w) => w.status === "paid")
+    .reduce((total, w) => total + Number(w.amount || 0), 0);
+
+  const uniqueLgas = new Set(
+    reports.map((r) => r.lga).filter(Boolean)
+  ).size;
+
+  const stats = [
+    {
+      title: "Pending review",
+      value: String(pendingReports.length),
+      text: `${uniqueLgas} LGA${uniqueLgas === 1 ? "" : "s"} affected`,
+    },
+    {
+      title: "Verified agents",
+      value: String(verifiedAgents.length),
+      text: `${agents.length} total registered`,
+    },
+    {
+      title: "Jobs in progress",
+      value: String(inProgressJobs.length),
+      text: `${openJobs.length} awaiting an agent`,
+    },
+    {
+      title: "Payouts (paid)",
+      value: formatCurrency(monthlyPayouts),
+      text: "Reporters + Agents",
+    },
+  ];
+
+  const recentJobs = [...jobs]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 3);
+
   return (
     <>
       <PageHeader
         title="Verification queue"
-        description="11 reports awaiting confirmation across 6 LGAs."
+        description={`${pendingReports.length} report${pendingReports.length === 1 ? "" : "s"} awaiting confirmation across ${uniqueLgas} LGA${uniqueLgas === 1 ? "" : "s"}.`}
         onMenu={onMenu}
       />
 
@@ -562,93 +617,74 @@ function OverviewPage({ onMenu }) {
 
       <section className="mt-9 grid gap-7 xl:grid-cols-[1.43fr_1fr]">
         {/* LIVE JOB BOARD */}
-        <DashboardCard className="h-80 p-4">
+        <DashboardCard className="h-80 p-4 overflow-y-auto">
           <div className="flex items-center justify-between">
             <h2 className="text-md font-medium">
               Live job board
             </h2>
-
-            <button className="text-md font-semibold text-[#006044]">
-              View all
-            </button>
           </div>
 
           <div className="mt-4 space-y-2">
-            <div className="rounded-lg border border-[#dfe4dd] px-6 py-3">
-              <p className="text-md font-medium">
-                Ndoni St, Umuahia
-              </p>
+            {recentJobs.length === 0 && (
+              <p className="text-sm text-[#60716a] py-4">No jobs yet.</p>
+            )}
+            {recentJobs.map((job) => (
+              <div key={job.id} className="rounded-lg border border-[#dfe4dd] px-6 py-3">
+                <p className="text-md font-medium">
+                  {job.reports?.title || job.reports?.address || job.job_code}
+                </p>
 
-              <span className="mt-1.5 inline-flex rounded-full bg-[#e2eee8] px-3.5 py-1.5 text-xs font-bold text-[#176348]">
-                CLAIMED
-              </span>
+                <span
+                  className={`mt-1.5 inline-flex rounded-full px-3.5 py-1.5 text-xs font-bold ${
+                    job.status === "open" || job.status === "assigned"
+                      ? "bg-[#e4ecf8] text-[#2861a9]"
+                      : "bg-[#e2eee8] text-[#176348]"
+                  }`}
+                >
+                  {job.status === "open" || job.status === "assigned"
+                    ? "OPEN"
+                    : job.status?.toUpperCase()}
+                </span>
 
-              <p className="mt-2.5 text-sm text-[#60716a]">
-                Taken by Agent Ifeoma B. — 6 minutes after posting.
-              </p>
-            </div>
-
-            <div className="rounded-[15px] border border-[#dfe4dd] px-6 py-3">
-              <p className="text-md font-medium">
-                Milverton Rd, Aba North
-              </p>
-
-              <span className="mt-1.5 inline-flex rounded-full bg-[#e4ecf8] px-3 py-1.5 text-xs font-bold text-[#2861a9]">
-                OPEN · SENT TO 14 AGENTS
-              </span>
-
-              <p className="mt-2.5 text-sm text-[#60716a]">
-                Awaiting first acceptance.
-              </p>
-            </div>
+                <p className="mt-2.5 text-sm text-[#60716a]">
+                  {job.profiles?.full_name
+                    ? `Taken by ${job.profiles.full_name}`
+                    : "Awaiting first acceptance."}
+                </p>
+              </div>
+            ))}
           </div>
         </DashboardCard>
 
         {/* RECYCLING */}
         <DashboardCard className="p-4">
           <h2 className="text-md font-medium">
-            Recycling drop-offs to verify
+            Pending reports
           </h2>
 
           <div className="mt-4">
-            <div className="flex gap-4 border-b border-[#dfe3dc] py-3">
-              <FiZap
-                size={24}
-                className="mt-1 shrink-0 text-[#e09a0b]"
-              />
+            {pendingReports.slice(0, 3).map((report) => (
+              <div key={report.id} className="flex gap-4 border-b border-[#dfe3dc] py-3 last:border-b-0">
+                <FiCamera
+                  size={24}
+                  className="mt-1 shrink-0 text-[#e09a0b]"
+                />
 
-              <div>
-                <p className="text-sm font-semibold">
-                  Faulks Rd centre
-                </p>
+                <div>
+                  <p className="text-sm font-semibold">
+                    {report.title}
+                  </p>
 
-                <p className="my-1 text-sm text-[#60716a]">
-                  84kg mixed plastics — pending weight check
-                </p>
+                  <p className="my-1 text-sm text-[#60716a]">
+                    {report.address} — {timeAgo(report.created_at)}
+                  </p>
+                </div>
               </div>
-            </div>
-
-            <div className="flex gap-4 border-b border-[#dfe3dc] py-3">
-              <FiZap
-                size={24}
-                className="my-1 shrink-0 text-[#e09a0b]"
-              />
-
-              <div>
-                <p className="text-sm font-semibold">
-                  Umuahia centre
-                </p>
-
-                <p className="mt-1 text-xs leading-snug text-[#60716a]">
-                  112kg organics — confirmed, payment queued
-                </p>
-              </div>
-            </div>
+            ))}
+            {pendingReports.length === 0 && (
+              <p className="text-sm text-[#60716a] py-4">Nothing pending review.</p>
+            )}
           </div>
-
-          <button className="mt-2 h-10 w-full rounded-full border border-[#53605a] text-sm font-semibold hover:bg-[#f3f5f2]">
-            Open recycling queue
-          </button>
         </DashboardCard>
       </section>
     </>
@@ -661,7 +697,7 @@ function OverviewPage({ onMenu }) {
 
 function ReportedSitesPage({
   onMenu,
-  statuses,
+  reports,
   onConfirm,
   onReject,
   onImageClick,
@@ -671,18 +707,19 @@ function ReportedSitesPage({
 
   const lgas = [
     "All LGAs",
-    "Aba North",
-    "Aba South",
-    "Arochukwu",
-    "Bende",
-    "Umuahia South",
+    ...Array.from(new Set(reports.map((r) => r.lga).filter(Boolean))),
   ];
+
+  const filteredReports =
+    selectedLga === "All LGAs"
+      ? reports
+      : reports.filter((r) => r.lga === selectedLga);
 
   return (
     <>
       <PageHeader
         title="Reported sites"
-        description="View and manage reported waste sites across 6 LGAs."
+        description={`View and manage reported waste sites across ${lgas.length - 1} LGA${lgas.length - 1 === 1 ? "" : "s"}.`}
         onMenu={onMenu}
       />
 
@@ -710,7 +747,7 @@ function ReportedSitesPage({
             </button>
 
             {filterOpen && (
-              <div className="absolute right-0 top-7 z-20 w-40 rounded-lg border border-[#dfe3dc] bg-white py-1 shadow-lg">
+              <div className="absolute right-0 top-7 z-20 w-40 rounded-lg border border-[#dfe3dc] bg-white py-1 shadow-lg max-h-64 overflow-y-auto">
                 {lgas.map((lga) => (
                   <button
                     key={lga}
@@ -741,24 +778,26 @@ function ReportedSitesPage({
             <span>Action</span>
           </div>
 
-          {reports.map((report) => (
-            <ReportRow
-              key={report.id}
-              report={report}
-              status={statuses[report.id]}
-              onConfirm={() => onConfirm(report.id)}
-              onReject={() => onReject(report.id)}
-              onImageClick={onImageClick}
-            />
-          ))}
-        </div>
+          {filteredReports.length === 0 && (
+            <p className="py-10 text-center text-sm text-[#60716a]">
+              No reports {selectedLga !== "All LGAs" ? `in ${selectedLga}` : "yet"}.
+            </p>
+          )}
 
-        {selectedLga !== "All LGAs" && (
-          <p className="mt-3 text-sm text-[#60716a]">
-            Filter selected:{" "}
-            <strong>{selectedLga}</strong>
-          </p>
-        )}
+          {filteredReports.map((report) => {
+            const display = mapReportForDisplay(report);
+            return (
+              <ReportRow
+                key={report.id}
+                report={display}
+                status={display.status}
+                onConfirm={() => onConfirm(report.id)}
+                onReject={() => onReject(report.id)}
+                onImageClick={() => onImageClick(display)}
+              />
+            );
+          })}
+        </div>
       </section>
     </>
   );
@@ -768,14 +807,23 @@ function ReportedSitesPage({
    JOB DISPATCH PAGE
 ========================================================= */
 
-function JobDispatchPage({ onMenu }) {
-  const jobs = [
-    ["JOB-056", "Ogbor Hill Rd, Aba South", "Aba South", "Open"],
-    ["JOB-055", "World Bank Housing Estate", "Aba North", "In progress"],
-    ["JOB-054", "Ariaria Market, Rear Gate", "Aba Central", "In progress"],
-    ["JOB-053", "Faulks Rd Workshop", "Aba South", "Completed"],
-    ["JOB-052", "Umuahia Rd, Opp. Stadium", "Umuahia", "Completed"],
-  ];
+const JOB_STATUS_LABELS = {
+  open: "Open",
+  assigned: "Assigned",
+  accepted: "Accepted",
+  in_progress: "In progress",
+  completed: "Completed",
+  confirmed: "Confirmed",
+  cancelled: "Cancelled",
+};
+
+function JobDispatchPage({ onMenu, jobs }) {
+  const counts = {
+    pending: jobs.filter((j) => j.status === "open" || j.status === "assigned").length,
+    inProgress: jobs.filter((j) => j.status === "accepted" || j.status === "in_progress").length,
+    completed: jobs.filter((j) => j.status === "completed" || j.status === "confirmed").length,
+    cancelled: jobs.filter((j) => j.status === "cancelled").length,
+  };
 
   return (
     <>
@@ -787,11 +835,11 @@ function JobDispatchPage({ onMenu }) {
 
       <section className="mt-9 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-5">
         {[
-          ["Jobs", "56", "All jobs"],
-          ["Pending", "18", "Awaiting agents"],
-          ["In progress", "22", "Active jobs"],
-          ["Completed", "14", "Finished"],
-          ["Cancelled", "2", "This month"],
+          ["Jobs", String(jobs.length), "All jobs"],
+          ["Pending", String(counts.pending), "Awaiting agents"],
+          ["In progress", String(counts.inProgress), "Active jobs"],
+          ["Completed", String(counts.completed), "Finished"],
+          ["Cancelled", String(counts.cancelled), "This month"],
         ].map(([title, value, text]) => (
           <StatCard
             key={title}
@@ -805,52 +853,53 @@ function JobDispatchPage({ onMenu }) {
       <DashboardCard className="mt-8 overflow-hidden">
         <div className="flex items-center justify-between border-b border-[#dfe3dc] p-5">
           <h2 className="font-medium">Active jobs</h2>
-
-          <button className="rounded-full bg-[#0d3f2d] px-4 py-2 text-sm font-semibold text-white">
-            + Create job
-          </button>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-212.5 text-left text-sm">
             <thead className="border-b border-[#dfe3dc] text-xs uppercase text-[#61716a]">
               <tr>
-                <th className="px-5 py-4">Job ID</th>
+                <th className="px-5 py-4">Job code</th>
                 <th className="px-5 py-4">Site</th>
-                <th className="px-5 py-4">Location</th>
+                <th className="px-5 py-4">Agent</th>
                 <th className="px-5 py-4">Status</th>
-                <th className="px-5 py-4">Action</th>
+                <th className="px-5 py-4">Payout</th>
               </tr>
             </thead>
 
             <tbody>
+              {jobs.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-[#61716a]">
+                    No jobs yet.
+                  </td>
+                </tr>
+              )}
               {jobs.map((job) => (
                 <tr
-                  key={job[0]}
+                  key={job.id}
                   className="border-b border-[#edf0ed] last:border-0"
                 >
                   <td className="px-5 py-4 font-semibold">
-                    {job[0]}
+                    {job.job_code}
                   </td>
 
                   <td className="px-5 py-4">
-                    {job[1]}
+                    {job.reports?.title || job.reports?.address || "—"}
                   </td>
 
                   <td className="px-5 py-4 text-[#61716a]">
-                    {job[2]}
+                    {job.profiles?.full_name || "Unassigned"}
                   </td>
 
                   <td className="px-5 py-4">
                     <span className="rounded-full bg-[#e4ecf8] px-3 py-1 text-xs font-semibold text-[#2861a9]">
-                      {job[3]}
+                      {JOB_STATUS_LABELS[job.status] || job.status}
                     </span>
                   </td>
 
-                  <td className="px-5 py-4">
-                    <button className="rounded-full border border-[#53605a] px-4 py-1.5 text-xs font-semibold">
-                      View
-                    </button>
+                  <td className="px-5 py-4 font-semibold">
+                    {formatCurrency(job.payout_amount)}
                   </td>
                 </tr>
               ))}
@@ -866,14 +915,21 @@ function JobDispatchPage({ onMenu }) {
    AGENTS PAGE
 ========================================================= */
 
-function AgentsPage({ onMenu }) {
-  const agents = [
-    ["Adesse Collins", "0803 123 4567", "Aba South", "Online", "42"],
-    ["Chidi Nwosu", "0806 987 6543", "Aba North", "Online", "62"],
-    ["Tochukwu Ike", "0812 345 6789", "Aba Central", "Offline", "38"],
-    ["Emeka Okafor", "0703 765 4321", "Umuahia", "Online", "63"],
-    ["Faith Sunday", "0814 234 5678", "Umuahia North", "Offline", "27"],
-  ];
+function AgentsPage({ onMenu, agents, onVerify, onReject }) {
+  const [busyId, setBusyId] = useState(null);
+
+  const verifiedCount = agents.filter((a) => a.is_verified).length;
+  const pendingCount = agents.filter((a) => a.verification_status === "pending" || !a.verification_status).length;
+  const rejectedCount = agents.filter((a) => a.verification_status === "rejected").length;
+
+  const handleAction = async (agent, action) => {
+    setBusyId(agent.id);
+    try {
+      await action(agent.id);
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
     <>
@@ -884,19 +940,15 @@ function AgentsPage({ onMenu }) {
       />
 
       <section className="mt-9 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total agents" value="142" text="All LGAs" />
-        <StatCard title="Online now" value="37" text="Currently active" />
-        <StatCard title="Offline" value="105" text="Not active" />
-        <StatCard title="On duty" value="84" text="With active jobs" />
+        <StatCard title="Total agents" value={String(agents.length)} text="All LGAs" />
+        <StatCard title="Verified" value={String(verifiedCount)} text="Approved" />
+        <StatCard title="Pending" value={String(pendingCount)} text="Awaiting review" />
+        <StatCard title="Rejected" value={String(rejectedCount)} text="Not approved" />
       </section>
 
       <DashboardCard className="mt-8 overflow-hidden">
         <div className="flex items-center justify-between p-5">
           <h2 className="font-medium">Agents</h2>
-
-          <button className="rounded-full bg-[#0d3f2d] px-4 py-2 text-sm font-semibold text-white">
-            + Add agent
-          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -905,45 +957,77 @@ function AgentsPage({ onMenu }) {
               <tr>
                 <th className="px-5 py-4">Agent</th>
                 <th className="px-5 py-4">Phone</th>
-                <th className="px-5 py-4">Location</th>
+                <th className="px-5 py-4">Agent code</th>
                 <th className="px-5 py-4">Status</th>
-                <th className="px-5 py-4">Jobs completed</th>
                 <th className="px-5 py-4">Action</th>
               </tr>
             </thead>
 
             <tbody>
+              {agents.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-[#61716a]">
+                    No agents have signed up yet.
+                  </td>
+                </tr>
+              )}
               {agents.map((agent) => (
                 <tr
-                  key={agent[0]}
+                  key={agent.id}
                   className="border-b border-[#edf0ed] last:border-0"
                 >
                   <td className="px-5 py-4 font-semibold">
-                    {agent[0]}
+                    {agent.profiles?.full_name || "Unknown"}
                   </td>
 
                   <td className="px-5 py-4 text-[#61716a]">
-                    {agent[1]}
+                    {agent.profiles?.phone || "—"}
                   </td>
 
                   <td className="px-5 py-4">
-                    {agent[2]}
+                    {agent.agent_code || "—"}
                   </td>
 
                   <td className="px-5 py-4">
-                    <span className="font-semibold text-[#176b4c]">
-                      ● {agent[3]}
+                    <span
+                      className={`font-semibold ${
+                        agent.is_verified
+                          ? "text-[#176b4c]"
+                          : agent.verification_status === "rejected"
+                          ? "text-[#b93630]"
+                          : "text-[#c58b12]"
+                      }`}
+                    >
+                      ●{" "}
+                      {agent.is_verified
+                        ? "Verified"
+                        : agent.verification_status === "rejected"
+                        ? "Rejected"
+                        : "Pending"}
                     </span>
                   </td>
 
                   <td className="px-5 py-4">
-                    {agent[4]}
-                  </td>
-
-                  <td className="px-5 py-4">
-                    <button className="rounded-full border border-[#53605a] px-4 py-1.5 text-xs font-semibold">
-                      View
-                    </button>
+                    {agent.is_verified ? (
+                      <span className="text-xs text-[#61716a]">—</span>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleAction(agent, onVerify)}
+                          disabled={busyId === agent.id}
+                          className="rounded-full bg-[#0d3f2d] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                        >
+                          Verify
+                        </button>
+                        <button
+                          onClick={() => handleAction(agent, onReject)}
+                          disabled={busyId === agent.id}
+                          className="rounded-full border border-[#53605a] px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -959,14 +1043,12 @@ function AgentsPage({ onMenu }) {
    REPORTERS PAGE
 ========================================================= */
 
-function ReportersPage({ onMenu }) {
-  const reporters = [
-    ["Blessing A.", "0801 222 1122", "Aba Central", "24", "May 12, 2025"],
-    ["Chidinma O.", "0801 333 4444", "Aba South", "18", "Apr 30, 2025"],
-    ["Samuel E.", "0808 555 6666", "Umuahia", "32", "May 26, 2025"],
-    ["Chiamaka K.", "0811 777 8888", "Aba North", "9", "May 06, 2025"],
-    ["Mercy U.", "0807 999 0000", "Umuahia North", "12", "Apr 18, 2025"],
-  ];
+function ReportersPage({ onMenu, reporters }) {
+  const activeCount = reporters.filter((r) => r.is_active).length;
+  const totalReports = reporters.reduce(
+    (sum, r) => sum + (r.reports?.length || 0),
+    0
+  );
 
   return (
     <>
@@ -977,20 +1059,15 @@ function ReportersPage({ onMenu }) {
       />
 
       <section className="mt-9 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total reporters" value="317" text="All time" />
-        <StatCard title="Active" value="251" text="Submitted in last 30 days" />
-        <StatCard title="Inactive" value="66" text="No recent reports" />
-        <StatCard title="Reports submitted" value="1,248" text="All time" />
+        <StatCard title="Total reporters" value={String(reporters.length)} text="All time" />
+        <StatCard title="Active" value={String(activeCount)} text="Account enabled" />
+        <StatCard title="Inactive" value={String(reporters.length - activeCount)} text="Account disabled" />
+        <StatCard title="Reports submitted" value={String(totalReports)} text="All time" />
       </section>
 
       <DashboardCard className="mt-8 overflow-hidden">
         <div className="flex items-center justify-between p-5">
           <h2 className="font-medium">Community reporters</h2>
-
-          <button className="flex items-center gap-1 text-sm font-semibold text-[#006044]">
-            Filter by LGA
-            <FiChevronDown size={15} />
-          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -1003,46 +1080,46 @@ function ReportersPage({ onMenu }) {
                 <th className="px-5 py-4">Reports</th>
                 <th className="px-5 py-4">Joined</th>
                 <th className="px-5 py-4">Status</th>
-                <th className="px-5 py-4">Action</th>
               </tr>
             </thead>
 
             <tbody>
+              {reporters.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-5 py-8 text-center text-[#61716a]">
+                    No reporters yet.
+                  </td>
+                </tr>
+              )}
               {reporters.map((reporter) => (
                 <tr
-                  key={reporter[0]}
+                  key={reporter.id}
                   className="border-b border-[#edf0ed] last:border-0"
                 >
                   <td className="px-5 py-4 font-semibold">
-                    {reporter[0]}
+                    {reporter.full_name}
                   </td>
 
                   <td className="px-5 py-4 text-[#61716a]">
-                    {reporter[1]}
+                    {reporter.phone || "—"}
                   </td>
 
                   <td className="px-5 py-4">
-                    {reporter[2]}
+                    {reporter.location || "—"}
                   </td>
 
                   <td className="px-5 py-4">
-                    {reporter[3]}
+                    {reporter.reports?.length || 0}
                   </td>
 
                   <td className="px-5 py-4">
-                    {reporter[4]}
+                    {formatDate(reporter.created_at)}
                   </td>
 
                   <td className="px-5 py-4">
-                    <span className="font-semibold text-[#176b4c]">
-                      ● Active
+                    <span className={`font-semibold ${reporter.is_active ? "text-[#176b4c]" : "text-[#b93630]"}`}>
+                      ● {reporter.is_active ? "Active" : "Inactive"}
                     </span>
-                  </td>
-
-                  <td className="px-5 py-4">
-                    <button className="rounded-full border border-[#53605a] px-4 py-1.5 text-xs font-semibold">
-                      View
-                    </button>
                   </td>
                 </tr>
               ))}
@@ -1058,14 +1135,54 @@ function ReportersPage({ onMenu }) {
    RECYCLING CENTRES PAGE
 ========================================================= */
 
-function RecyclingCentresPage({ onMenu }) {
-  const centres = [
-    ["Faulks Rd centre", "Aba South", "Plastics, Metals, Paper", "Active", "May 28, 2026"],
-    ["Umuahia centre", "Umuahia North", "Organics, Plastics", "Active", "May 21, 2026"],
-    ["Ariaria recycling hub", "Aba Central", "Plastics, Paper, Glass", "Under review", "May 16, 2026"],
-    ["Ogwuma drop-off", "Ossisa", "Metals, Electronics", "Active", "Apr 15, 2026"],
-    ["World Bank Estate centre", "Aba North", "Plastics, Metals", "Active", "May 01, 2026"],
-  ];
+function RecyclingCentresPage({ onMenu, centres, onAddCentre, onToggleActive }) {
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [busyId, setBusyId] = useState(null);
+  const [formState, setFormState] = useState({
+    name: "",
+    address: "",
+    lga: "",
+    phone: "",
+    accepted_materials: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const activeCount = centres.filter((c) => c.is_active).length;
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    setFormError("");
+    setSaving(true);
+
+    try {
+      await onAddCentre({
+        name: formState.name,
+        address: formState.address,
+        lga: formState.lga,
+        phone: formState.phone,
+        accepted_materials: formState.accepted_materials
+          .split(",")
+          .map((m) => m.trim())
+          .filter(Boolean),
+      });
+      setFormState({ name: "", address: "", lga: "", phone: "", accepted_materials: "" });
+      setShowAddForm(false);
+    } catch (err) {
+      setFormError(err.message || "Failed to add centre.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggle = async (centre) => {
+    setBusyId(centre.id);
+    try {
+      await onToggleActive(centre.id, !centre.is_active);
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
     <>
@@ -1075,18 +1192,80 @@ function RecyclingCentresPage({ onMenu }) {
         onMenu={onMenu}
       />
 
-      <section className="mt-9 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total centres" value="24" text="Across LGAs" />
-        <StatCard title="Active" value="18" text="Accepting materials" />
-        <StatCard title="Under review" value="3" text="Pending verification" />
-        <StatCard title="Inactive" value="3" text="Temporarily closed" />
+      <section className="mt-9 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard title="Total centres" value={String(centres.length)} text="Across LGAs" />
+        <StatCard title="Active" value={String(activeCount)} text="Accepting materials" />
+        <StatCard title="Inactive" value={String(centres.length - activeCount)} text="Temporarily closed" />
       </section>
+
+      {showAddForm && (
+        <DashboardCard className="mt-8 p-5">
+          <h2 className="font-medium mb-4">Add recycling centre</h2>
+          {formError && (
+            <p className="mb-3 text-sm text-[#b93630]">{formError}</p>
+          )}
+          <form onSubmit={handleAdd} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input
+              required
+              placeholder="Centre name"
+              value={formState.name}
+              onChange={(e) => setFormState((p) => ({ ...p, name: e.target.value }))}
+              className="border border-[#dfe3dc] rounded-lg px-3 py-2 text-sm"
+            />
+            <input
+              required
+              placeholder="LGA"
+              value={formState.lga}
+              onChange={(e) => setFormState((p) => ({ ...p, lga: e.target.value }))}
+              className="border border-[#dfe3dc] rounded-lg px-3 py-2 text-sm"
+            />
+            <input
+              required
+              placeholder="Address"
+              value={formState.address}
+              onChange={(e) => setFormState((p) => ({ ...p, address: e.target.value }))}
+              className="border border-[#dfe3dc] rounded-lg px-3 py-2 text-sm sm:col-span-2"
+            />
+            <input
+              placeholder="Phone"
+              value={formState.phone}
+              onChange={(e) => setFormState((p) => ({ ...p, phone: e.target.value }))}
+              className="border border-[#dfe3dc] rounded-lg px-3 py-2 text-sm"
+            />
+            <input
+              placeholder="Materials accepted (comma-separated)"
+              value={formState.accepted_materials}
+              onChange={(e) => setFormState((p) => ({ ...p, accepted_materials: e.target.value }))}
+              className="border border-[#dfe3dc] rounded-lg px-3 py-2 text-sm"
+            />
+            <div className="sm:col-span-2 flex gap-3">
+              <button
+                type="submit"
+                disabled={saving}
+                className="rounded-full bg-[#0d3f2d] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {saving ? "Saving..." : "Save centre"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAddForm(false)}
+                className="rounded-full border border-[#53605a] px-4 py-2 text-sm font-semibold"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </DashboardCard>
+      )}
 
       <DashboardCard className="mt-8 overflow-hidden">
         <div className="flex items-center justify-between p-5">
           <h2 className="font-medium">Recycling centres</h2>
 
-          <button className="rounded-full bg-[#0d3f2d] px-4 py-2 text-sm font-semibold text-white">
+          <button
+            onClick={() => setShowAddForm((s) => !s)}
+            className="rounded-full bg-[#0d3f2d] px-4 py-2 text-sm font-semibold text-white"
+          >
             + Add centre
           </button>
         </div>
@@ -1099,48 +1278,54 @@ function RecyclingCentresPage({ onMenu }) {
                 <th className="px-5 py-4">Location</th>
                 <th className="px-5 py-4">Materials accepted</th>
                 <th className="px-5 py-4">Status</th>
-                <th className="px-5 py-4">Last verified</th>
                 <th className="px-5 py-4">Action</th>
               </tr>
             </thead>
 
             <tbody>
+              {centres.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-[#61716a]">
+                    No recycling centres added yet.
+                  </td>
+                </tr>
+              )}
               {centres.map((centre) => (
                 <tr
-                  key={centre[0]}
+                  key={centre.id}
                   className="border-b border-[#edf0ed] last:border-0"
                 >
                   <td className="px-5 py-4 font-semibold">
-                    {centre[0]}
+                    {centre.name}
                   </td>
 
                   <td className="px-5 py-4">
-                    {centre[1]}
+                    {centre.lga || centre.address}
                   </td>
 
                   <td className="px-5 py-4 text-[#61716a]">
-                    {centre[2]}
+                    {(centre.accepted_materials || []).join(", ") || "—"}
                   </td>
 
                   <td className="px-5 py-4">
                     <span
                       className={
-                        centre[3] === "Active"
+                        centre.is_active
                           ? "font-semibold text-[#176b4c]"
                           : "font-semibold text-[#c58b12]"
                       }
                     >
-                      ● {centre[3]}
+                      ● {centre.is_active ? "Active" : "Inactive"}
                     </span>
                   </td>
 
                   <td className="px-5 py-4">
-                    {centre[4]}
-                  </td>
-
-                  <td className="px-5 py-4">
-                    <button className="rounded-full border border-[#53605a] px-4 py-1.5 text-xs font-semibold">
-                      View
+                    <button
+                      onClick={() => handleToggle(centre)}
+                      disabled={busyId === centre.id}
+                      className="rounded-full border border-[#53605a] px-4 py-1.5 text-xs font-semibold disabled:opacity-60"
+                    >
+                      {centre.is_active ? "Deactivate" : "Activate"}
                     </button>
                   </td>
                 </tr>
@@ -1157,99 +1342,140 @@ function RecyclingCentresPage({ onMenu }) {
    PAYMENTS PAGE
 ========================================================= */
 
-function PaymentsPage({ onMenu }) {
-  const payments = [
-    ["PAY-0248", "Adesse Collins", "Agent payout", "₦26,000", "Completed", "Jun 01, 2025"],
-    ["PAY-0247", "Faulk Rd centre", "Centre payout", "₦90,000", "Pending", "Jun 01, 2025"],
-    ["PAY-0246", "Chidi Nwosu", "Agent payout", "₦22,500", "Completed", "May 31, 2025"],
-    ["PAY-0245", "Umuahia centre", "Centre payout", "₦35,000", "Completed", "May 31, 2025"],
-    ["PAY-0244", "Tochukwu Ike", "Agent payout", "₦20,000", "Failed", "May 30, 2025"],
-  ];
+const WITHDRAWAL_STATUS_STYLES = {
+  paid: "text-[#176b4c]",
+  approved: "text-[#176b4c]",
+  processing: "text-[#c58b12]",
+  pending: "text-[#c58b12]",
+  rejected: "text-[#b93630]",
+  failed: "text-[#b93630]",
+};
+
+function PaymentsPage({ onMenu, withdrawals, onUpdateStatus }) {
+  const [busyId, setBusyId] = useState(null);
+
+  const totalPaid = withdrawals
+    .filter((w) => w.status === "paid")
+    .reduce((sum, w) => sum + Number(w.amount || 0), 0);
+  const pendingTotal = withdrawals
+    .filter((w) => w.status === "pending")
+    .reduce((sum, w) => sum + Number(w.amount || 0), 0);
+  const failedTotal = withdrawals
+    .filter((w) => w.status === "failed" || w.status === "rejected")
+    .reduce((sum, w) => sum + Number(w.amount || 0), 0);
+
+  const handleUpdate = async (withdrawal, status) => {
+    setBusyId(withdrawal.id);
+    try {
+      await onUpdateStatus(withdrawal.id, status);
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
     <>
       <PageHeader
         title="Payments"
-        description="Track payouts to agents and centres."
+        description="Track payouts to agents and reporters."
         onMenu={onMenu}
       />
 
-      <section className="mt-9 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard title="Total payouts" value="₦4.2M" text="All time" />
-        <StatCard title="This month" value="₦612K" text="June 2025" />
-        <StatCard title="Pending" value="₦85K" text="Awaiting approval" />
-        <StatCard title="Completed" value="₦527K" text="This month" />
-        <StatCard title="Failed" value="₦12K" text="Needs review" />
+      <section className="mt-9 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard title="Total paid out" value={formatCurrency(totalPaid)} text="All time" />
+        <StatCard title="Pending" value={formatCurrency(pendingTotal)} text="Awaiting approval" />
+        <StatCard title="Failed / rejected" value={formatCurrency(failedTotal)} text="Needs review" />
       </section>
 
       <DashboardCard className="mt-8 overflow-hidden">
         <div className="flex items-center justify-between p-5">
-          <h2 className="font-medium">Payment history</h2>
-
-          <button className="flex items-center gap-1 text-sm font-semibold text-[#006044]">
-            Filter
-            <FiChevronDown size={15} />
-          </button>
+          <h2 className="font-medium">Withdrawal requests</h2>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-850px text-left text-sm">
             <thead className="border-y border-[#dfe3dc] text-xs uppercase text-[#61716a]">
               <tr>
-                <th className="px-5 py-4">Payment ID</th>
                 <th className="px-5 py-4">Recipient</th>
-                <th className="px-5 py-4">Type</th>
+                <th className="px-5 py-4">Role</th>
+                <th className="px-5 py-4">Bank</th>
                 <th className="px-5 py-4">Amount</th>
                 <th className="px-5 py-4">Status</th>
-                <th className="px-5 py-4">Date</th>
+                <th className="px-5 py-4">Requested</th>
                 <th className="px-5 py-4">Action</th>
               </tr>
             </thead>
 
             <tbody>
-              {payments.map((payment) => (
+              {withdrawals.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-5 py-8 text-center text-[#61716a]">
+                    No withdrawal requests yet.
+                  </td>
+                </tr>
+              )}
+              {withdrawals.map((payment) => (
                 <tr
-                  key={payment[0]}
+                  key={payment.id}
                   className="border-b border-[#edf0ed] last:border-0"
                 >
                   <td className="px-5 py-4 font-semibold">
-                    {payment[0]}
+                    {payment.profiles?.full_name || "Unknown"}
                   </td>
 
-                  <td className="px-5 py-4">
-                    {payment[1]}
+                  <td className="px-5 py-4 text-[#61716a] capitalize">
+                    {payment.profiles?.role || "—"}
                   </td>
 
                   <td className="px-5 py-4 text-[#61716a]">
-                    {payment[2]}
+                    {payment.bank_name} · {payment.account_number}
                   </td>
 
                   <td className="px-5 py-4 font-semibold">
-                    {payment[3]}
+                    {formatCurrency(payment.amount)}
                   </td>
 
                   <td className="px-5 py-4">
                     <span
-                      className={
-                        payment[4] === "Completed"
-                          ? "font-semibold text-[#176b4c]"
-                          : payment[4] === "Failed"
-                          ? "font-semibold text-[#b93630]"
-                          : "font-semibold text-[#c58b12]"
-                      }
+                      className={`font-semibold capitalize ${WITHDRAWAL_STATUS_STYLES[payment.status] || "text-[#61716a]"}`}
                     >
-                      ● {payment[4]}
+                      ● {payment.status}
                     </span>
                   </td>
 
                   <td className="px-5 py-4">
-                    {payment[5]}
+                    {formatDate(payment.requested_at)}
                   </td>
 
                   <td className="px-5 py-4">
-                    <button className="rounded-full border border-[#53605a] px-4 py-1.5 text-xs font-semibold">
-                      View
-                    </button>
+                    {payment.status === "pending" ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleUpdate(payment, "approved")}
+                          disabled={busyId === payment.id}
+                          className="rounded-full bg-[#0d3f2d] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleUpdate(payment, "rejected")}
+                          disabled={busyId === payment.id}
+                          className="rounded-full border border-[#53605a] px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    ) : payment.status === "approved" ? (
+                      <button
+                        onClick={() => handleUpdate(payment, "paid")}
+                        disabled={busyId === payment.id}
+                        className="rounded-full bg-[#0d3f2d] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                      >
+                        Mark paid
+                      </button>
+                    ) : (
+                      <span className="text-xs text-[#61716a]">—</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -1268,17 +1494,22 @@ function PaymentsPage({ onMenu }) {
 function DashboardContent({
   activePage,
   onMenu,
-  statuses,
+  data,
   onConfirm,
   onReject,
   onImageClick,
+  onVerifyAgent,
+  onRejectAgent,
+  onUpdateWithdrawal,
+  onAddCentre,
+  onToggleCentreActive,
 }) {
   switch (activePage) {
     case "Reported sites":
       return (
         <ReportedSitesPage
           onMenu={onMenu}
-          statuses={statuses}
+          reports={data.reports}
           onConfirm={onConfirm}
           onReject={onReject}
           onImageClick={onImageClick}
@@ -1286,23 +1517,51 @@ function DashboardContent({
       );
 
     case "Job dispatch":
-      return <JobDispatchPage onMenu={onMenu} />;
+      return <JobDispatchPage onMenu={onMenu} jobs={data.jobs} />;
 
     case "Agents":
-      return <AgentsPage onMenu={onMenu} />;
+      return (
+        <AgentsPage
+          onMenu={onMenu}
+          agents={data.agents}
+          onVerify={onVerifyAgent}
+          onReject={onRejectAgent}
+        />
+      );
 
     case "Reporters":
-      return <ReportersPage onMenu={onMenu} />;
+      return <ReportersPage onMenu={onMenu} reporters={data.reporters} />;
 
     case "Recycling centres":
-      return <RecyclingCentresPage onMenu={onMenu} />;
+      return (
+        <RecyclingCentresPage
+          onMenu={onMenu}
+          centres={data.centres}
+          onAddCentre={onAddCentre}
+          onToggleActive={onToggleCentreActive}
+        />
+      );
 
     case "Payments":
-      return <PaymentsPage onMenu={onMenu} />;
+      return (
+        <PaymentsPage
+          onMenu={onMenu}
+          withdrawals={data.withdrawals}
+          onUpdateStatus={onUpdateWithdrawal}
+        />
+      );
 
     case "Overview":
     default:
-      return <OverviewPage onMenu={onMenu} />;
+      return (
+        <OverviewPage
+          onMenu={onMenu}
+          reports={data.reports}
+          agents={data.agents}
+          jobs={data.jobs}
+          withdrawals={data.withdrawals}
+        />
+      );
   }
 }
 
@@ -1315,38 +1574,130 @@ export default function AdminDashboard() {
 
   const [activePage, setActivePage] = useState("Overview");
 
-  const [statuses, setStatuses] = useState({});
-
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
 
   const [selectedReport, setSelectedReport] = useState(null);
 
-  /* =======================================================
-     CONFIRM SITE
-  ======================================================= */
+  const [data, setData] = useState({
+    reports: [],
+    agents: [],
+    reporters: [],
+    jobs: [],
+    withdrawals: [],
+    centres: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
-  const confirmSite = (id) => {
-    setStatuses((previous) => ({
-      ...previous,
-      [id]: "confirmed",
-    }));
+  const loadAllData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setLoadError(null);
 
+      const [reports, agents, reporters, jobs, withdrawals, centres] =
+        await Promise.all([
+          getAllReports(),
+          getAllAgents(),
+          getAllReporters(),
+          getAllJobs(),
+          getAllWithdrawals(),
+          getAllRecyclingCentres(),
+        ]);
+
+      setData({ reports, agents, reporters, jobs, withdrawals, centres });
+    } catch (err) {
+      console.error("Failed to load admin dashboard data:", err);
+      setLoadError("Failed to load dashboard data. Please refresh.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAllData();
+  }, [loadAllData]);
+
+  const flashToast = (message) => {
+    setToastMessage(message);
     setShowToast(true);
-
-    setTimeout(() => {
-      setShowToast(false);
-    }, 4500);
+    setTimeout(() => setShowToast(false), 4500);
   };
 
   /* =======================================================
-     REJECT SITE
+     CONFIRM / REJECT SITE
   ======================================================= */
 
-  const rejectSite = (id) => {
-    setStatuses((previous) => ({
-      ...previous,
-      [id]: "rejected",
-    }));
+  const confirmSite = async (id) => {
+    try {
+      await confirmReport(id);
+      flashToast("Site confirmed and job dispatched to nearby agents.");
+      await loadAllData();
+    } catch (err) {
+      console.error("Failed to confirm report:", err);
+    }
+  };
+
+  const rejectSite = async (id) => {
+    try {
+      await rejectReport(id);
+      await loadAllData();
+    } catch (err) {
+      console.error("Failed to reject report:", err);
+    }
+  };
+
+  /* =======================================================
+     AGENT VERIFICATION
+  ======================================================= */
+
+  const handleVerifyAgent = async (agentProfileId) => {
+    try {
+      await verifyAgent(agentProfileId);
+      await loadAllData();
+    } catch (err) {
+      console.error("Failed to verify agent:", err);
+    }
+  };
+
+  const handleRejectAgent = async (agentProfileId) => {
+    try {
+      await rejectAgent(agentProfileId);
+      await loadAllData();
+    } catch (err) {
+      console.error("Failed to reject agent:", err);
+    }
+  };
+
+  /* =======================================================
+     WITHDRAWALS
+  ======================================================= */
+
+  const handleUpdateWithdrawal = async (withdrawalId, status) => {
+    try {
+      await updateWithdrawalStatus(withdrawalId, status);
+      await loadAllData();
+    } catch (err) {
+      console.error("Failed to update withdrawal:", err);
+    }
+  };
+
+  /* =======================================================
+     RECYCLING CENTRES
+  ======================================================= */
+
+  const handleAddCentre = async (centre) => {
+    await createRecyclingCentre(centre);
+    await loadAllData();
+  };
+
+  const handleToggleCentreActive = async (centreId, isActive) => {
+    try {
+      await setRecyclingCentreActive(centreId, isActive);
+      await loadAllData();
+    } catch (err) {
+      console.error("Failed to update recycling centre:", err);
+    }
   };
 
   /* =======================================================
@@ -1366,6 +1717,14 @@ export default function AdminDashboard() {
     });
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-[#f4f6f2]">
+        <p className="text-[#0d3f2d] font-medium">Loading admin dashboard...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f4f6f2]">
       {/* DESKTOP SIDEBAR */}
@@ -1377,13 +1736,23 @@ export default function AdminDashboard() {
       {/* MAIN */}
       <main className="min-w-0 lg:ml-62">
         <div className="px-5 pb-11 pt-6 sm:px-8.75 lg:px-12.5">
+          {loadError && (
+            <div className="mb-5 rounded-xl bg-[#f9e5e3] p-4 text-sm text-[#b93630]">
+              {loadError}
+            </div>
+          )}
           <DashboardContent
             activePage={activePage}
             onMenu={() => setMobileMenu(true)}
-            statuses={statuses}
+            data={data}
             onConfirm={confirmSite}
             onReject={rejectSite}
             onImageClick={setSelectedReport}
+            onVerifyAgent={handleVerifyAgent}
+            onRejectAgent={handleRejectAgent}
+            onUpdateWithdrawal={handleUpdateWithdrawal}
+            onAddCentre={handleAddCentre}
+            onToggleCentreActive={handleToggleCentreActive}
           />
         </div>
       </main>
@@ -1416,6 +1785,7 @@ export default function AdminDashboard() {
       {/* CONFIRMATION TOAST */}
       {showToast && (
         <ConfirmationToast
+          message={toastMessage}
           onClose={() => setShowToast(false)}
         />
       )}

@@ -12,6 +12,10 @@ export async function signUp({
     options: {
       data: {
         full_name: fullName,
+        // Read by the handle_new_user() DB trigger, which only
+        // honors 'reporter' or 'agent' - 'admin' can never be
+        // self-selected this way.
+        role,
       },
     },
   })
@@ -89,4 +93,16 @@ export async function resetPassword(email) {
 
 export function onAuthStateChange(callback) {
   return supabase.auth.onAuthStateChange(callback)
+}
+
+
+export async function updateAuthUser(updates) {
+  const { data, error } =
+    await supabase.auth.updateUser(updates)
+
+  if (error) {
+    throw error
+  }
+
+  return data
 }

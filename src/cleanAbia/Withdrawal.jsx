@@ -4,8 +4,6 @@ import { MdLockOutline, MdOutlineGppGood } from 'react-icons/md'
 import { requestWithdrawal } from '../services/withdrawals'
 
 export default function Withdrawal({ availableBalance = 0 }) {
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
   const [bankName, setBankName] = useState('')
   const [accountName, setAccountName] = useState('')
   const [accountNumber, setAccountNumber] = useState('')
@@ -37,8 +35,6 @@ export default function Withdrawal({ availableBalance = 0 }) {
     try {
       setLoading(true)
       await requestWithdrawal({
-        fullName,
-        email,
         bankName,
         accountName,
         accountNumber,
@@ -86,37 +82,6 @@ export default function Withdrawal({ availableBalance = 0 }) {
             )}
 
             <form onSubmit={handleSubmit} className='mt-6 sm:mt-8 space-y-4'>
-
-              {/* ================= NAME + EMAIL ================= */}
-              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5'>
-                <div className='w-full'>
-                  <label className='block mb-2 font-medium text-sm sm:text-base'>
-                    Full Name:
-                  </label>
-                  <input
-                    type='text'
-                    required
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder='e.g Emeka Okafor'
-                    className='border border-slate-300 shadow-sm w-full rounded-md px-3 py-3 outline-none focus:border-[#2d5e48] focus:ring-1 focus:ring-[#2d5e48]'
-                  />
-                </div>
-
-                <div className='w-full'>
-                  <label className='block mb-2 font-medium text-sm sm:text-base'>
-                    Email address:
-                  </label>
-                  <input
-                    type='email'
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder='e.g emeka@gmail.com'
-                    className='border border-slate-300 shadow-sm w-full rounded-md px-3 py-3 outline-none focus:border-[#2d5e48] focus:ring-1 focus:ring-[#2d5e48]'
-                  />
-                </div>
-              </div>
 
               {/* ================= BANK + ACCOUNT NAME ================= */}
               <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5'>

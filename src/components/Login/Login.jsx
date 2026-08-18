@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { signIn } from '../../services/auth'
 import { getMyProfile } from '../../services/profiles'
+import { ROLE_HOME } from '../ProtectedRoute'
 
 export default function LoginSection() {
     const [email, setEmail] = useState('')
@@ -10,54 +11,24 @@ export default function LoginSection() {
     const [loading, setLoading] = useState(false)
     const navigate = useNavigate()
 
-async function handleSubmit(e) {
-  e.preventDefault()
+    async function handleLogin(e) {
+        e.preventDefault()
+        setErrorMsg('')
+        setLoading(true)
 
-  try {
-    setLoading(true)
-    setError('')
+        try {
+            await signIn(email, password)
 
-    const { user } = await signIn(
-      email,
-      password
-    )
-
-    if (!user) {
-      throw new Error('Login failed.')
+            // Look up the role so we can send the person to
+            // the right dashboard (reporter / agent / admin).
+            const profile = await getMyProfile()
+            navigate(ROLE_HOME[profile?.role] ?? '/')
+        } catch (error) {
+            setErrorMsg(error.message || 'Failed to log in')
+        } finally {
+            setLoading(false)
+        }
     }
-
-    const profile =
-      await getMyProfile()
-
-    switch (profile.role) {
-      case 'admin':
-        navigate('/admin')
-        break
-
-      case 'agent':
-        navigate('/agents')
-        break
-
-      case 'reporter':
-        navigate('/dashboard')
-        break
-
-      default:
-        throw new Error(
-          'Your account has no valid role.'
-        )
-    }
-  } catch (err) {
-    console.error(err)
-
-    setError(
-      err.message ||
-      'Unable to sign in.'
-    )
-  } finally {
-    setLoading(false)
-  }
-}
 
     return (
         <section className='bg-[#E4EEE7] grid md:grid-cols-2 min-h-screen overflow-y-hidden'>

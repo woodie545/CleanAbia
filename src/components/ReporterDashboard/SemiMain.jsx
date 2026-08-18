@@ -9,12 +9,19 @@ export default function SemiMain({
   setPages,
   userProfile,
   setUserProfile,
+  reports,
+  reportsError,
 }) {
   return (
     <div className="flex-1 min-w-0 bg-forest-tint overflow-y-auto p-4">
       {/* 1. Overview */}
       {pages === "overview" && (
-        <Overview userProfile={userProfile} setActiveTab={setPages} />
+        <Overview
+          userProfile={userProfile}
+          setActiveTab={setPages}
+          reports={reports}
+          reportsError={reportsError}
+        />
       )}
 
       {/* 2. File a Report */}

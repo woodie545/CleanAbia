@@ -1,18 +1,32 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { CiClock2, CiGrid41, CiCamera, CiSettings } from "react-icons/ci";
 import { AiOutlineDollar } from "react-icons/ai";
 import { GoAlert, GoPerson } from "react-icons/go";
 import { LuBell, LuMenu, LuX } from "react-icons/lu";
+import { useAuth } from "../../hooks/useAuth";
 
 // Pass activePage alongside setPages and userProfile
 export default function Aside({ setPages, userProfile, activePage = "overview" }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
 
-  // Extract values dynamically with fallback defaults
-  const fullName = userProfile?.fullName || "Chidinma Okafor";
-  const address = userProfile?.address || "15 Brass Street, Aba";
-  const role = userProfile?.role || "Reporter";
-  const avatarUrl = userProfile?.avatarUrl || null;
+  // Extract values dynamically with fallback defaults.
+  // Field names match the `profiles` table (snake_case).
+  const fullName = userProfile?.full_name || "Chidinma Okafor";
+  const address = userProfile?.location || "15 Brass Street, Aba";
+  const role = userProfile?.role || "reporter";
+  const avatarUrl = userProfile?.avatar_url || null;
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate("/login");
+    } catch (err) {
+      console.error("Failed to log out:", err);
+    }
+  };
 
   // Helper function to extract initials dynamically
   const getInitials = (name) => {
@@ -120,7 +134,10 @@ export default function Aside({ setPages, userProfile, activePage = "overview" }
 
         {/* Dynamic Bottom Profile Badge */}
         <div className="space-y-4 pt-6 shrink-0">
-          <button className="w-full bg-forest border border-white/30 rounded-full py-2 px-4 font-bold hover:bg-white/10 transition-colors">
+          <button
+            onClick={handleLogout}
+            className="w-full bg-forest border border-white/30 rounded-full py-2 px-4 font-bold hover:bg-white/10 transition-colors"
+          >
             Log out
           </button>
           <div className="border-b border-white/30" />
@@ -139,7 +156,7 @@ export default function Aside({ setPages, userProfile, activePage = "overview" }
                 )}
               </div>
               <div className="text-xs text-white/80 leading-tight min-w-0">
-                <p className="truncate font-medium">{role}</p>
+                <p className="truncate font-medium capitalize">{role}</p>
                 <p className="truncate">{address}</p>
               </div>
             </div>

@@ -1,23 +1,28 @@
 import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import z from 'zod'
+import { useNavigate } from 'react-router-dom'
 import { FaArrowLeftLong, } from 'react-icons/fa6'
 import { FiEye, FiEyeOff } from 'react-icons/fi'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { RxCross1 } from 'react-icons/rx'
-import { useRef } from 'react'
-import { Link, NavLink } from 'react-router'
+import { NavLink } from 'react-router'
 import { HiMiniArrowUpTray } from 'react-icons/hi2'
+import { signUp } from '../../services/auth'
+import { updateMyProfile, uploadAvatar } from '../../services/profiles'
+import { createMyAgentProfile } from '../../services/agentProfiles'
 
 
 export default function AgentSignChild({setPage}) {
   const [image,setImage]= useState(null)
-  // const [dpname,setDpname] =useState("")
-  // ,setDpname(img.name)
   const [pass,setPass] =useState("password")
   const [secondpass,setSecondpass]= useState("password")
   const [showIcon,setShowIcon] = useState(false)
   const [secondIcon,setSecondIcon] =useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [pendingConfirmation, setPendingConfirmation] = useState(false)
+  const navigate = useNavigate()
   const schema=z.object({
     file:z
         .instanceof(FileList).refine((files)=> files.length > 0, "Please select a photo")
@@ -54,10 +59,58 @@ export default function AgentSignChild({setPage}) {
   function secondpassfn() {
     secondpass==="password"? setSecondpass("text") : setSecondpass("password")
   }
-  function submitfn(data) {
-    console.log(data);
-    reset()
-    setImage(null)
+  async function submitfn(data) {
+    setSubmitError('')
+    setSubmitting(true)
+
+    try {
+      const signUpData = await signUp({
+        email: data.email,
+        password: data.password,
+        fullName: data.fullname,
+        role: 'agent',
+      })
+
+      // If email confirmation is on, there's no session yet - the
+      // rest of this (photo, NIN/ABSSIN, agent_profiles row) has
+      // to wait until they confirm and log in.
+      if (!signUpData?.session) {
+        reset()
+        setImage(null)
+        setSubmitting(false)
+        setPendingConfirmation(true)
+        return
+      }
+
+      await updateMyProfile({
+        phone: data.phone,
+        location: data.address,
+      })
+
+      await createMyAgentProfile({
+        address: data.address,
+        nin: data.nin,
+        abssin: data.abssin,
+      })
+
+      const photoFile = data.file?.[0]
+      if (photoFile) {
+        try {
+          await uploadAvatar(photoFile)
+        } catch (photoErr) {
+          console.error('Failed to upload profile photo:', photoErr)
+        }
+      }
+
+      reset()
+      setImage(null)
+      navigate('/login')
+    } catch (err) {
+      console.error('Agent sign up failed:', err)
+      setSubmitError(err.message || 'Failed to create your account.')
+    } finally {
+      setSubmitting(false)
+    }
   }
   function toggleIcon(e) {
     setShowIcon(e.target.value.length>0)
@@ -69,6 +122,23 @@ export default function AgentSignChild({setPage}) {
   function del() {
     setImage(null)
   }
+  if (pendingConfirmation) {
+    return (
+      <div className='lg:w-[50%] w-full min-h-screen bg-[#E4EEE7] flex items-center justify-center px-5'>
+        <div className='max-w-md text-center'>
+          <p className='text-xl font-semibold mb-2'>Check your email</p>
+          <p className='text-gray-700'>
+            We've sent a confirmation link to your email address. Confirm it, then log in to finish
+            setting up your agent profile (photo, NIN/ABSSIN and address).
+          </p>
+          <NavLink to='/login' className='inline-block mt-5 text-green-600 font-medium'>
+            Go to login
+          </NavLink>
+        </div>
+      </div>
+    )
+  }
+
   return (
             <div className='lg:w-[50%] w-full min-h-screen bg-[#E4EEE7]'>
             <section className='lg:w-[65%] md:w-[85%] md:m-auto  pr-5 pl-5 lg:pl-0 lg:pr-0 pt-8 pb-5 overflow-auto '>
@@ -78,6 +148,11 @@ export default function AgentSignChild({setPage}) {
                 <p className='text-xl md:text-4xl lg:text-xl font-semibold text-left lg:text-left md:text-center '>Create your Agent account</p>
                 <p className='text-gray-700 text-left lg:text-left md:text-center md:text-2xl lg:text-[17px] text-[17px]'>Identity verification is required before you can accept jobs.</p>
                 <form  className='space-y-5 mt-5' onSubmit={handleSubmit(submitfn)}>
+                    {submitError && (
+                      <div className='p-3 bg-red-100 text-red-700 rounded-xl text-sm'>
+                        {submitError}
+                      </div>
+                    )}
                     <div>
                     <label htmlFor="fullname">Full Name</label><br/>
                     <input type="text"  {...register("fullname")} name='fullname' id='fullname' required placeholder='e.g Chidinma Okafor' className='w-full pl-5 py-2 border-gray-300 border  bg-white mt-1 rounded-md ' />
@@ -173,7 +248,9 @@ export default function AgentSignChild({setPage}) {
                     <button onClick={() => setPage("terms")} type='button' className='text-green-600 pl-1'> Agent terms</button>
                     </label>
                     </div>
-                    <button className='w-full bg-amber-400 py-2 rounded-2xl border' type='submit'>Create Agent account</button>
+                    <button className='w-full bg-amber-400 disabled:opacity-60 py-2 rounded-2xl border' type='submit' disabled={submitting}>
+                      {submitting ? 'Creating account...' : 'Create Agent account'}
+                    </button>
                 </form>
                 <p className='text-sm text-center pt-3'>Already have an account? <NavLink to="/login" className='text-green-600'>Log in</NavLink></p>
             </section>

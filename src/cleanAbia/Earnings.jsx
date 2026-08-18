@@ -37,33 +37,51 @@ export default function Earnings() {
     }).format(amount || 0)
   }
 
+  const REWARD_TYPES = ['job_reward', 'report_reward', 'adjustment']
+  const transactions = earnings?.transactions || []
+
+  // "This month" - completed rewards dated within the current month.
+  const now = new Date()
+  const thisMonthTotal = transactions
+    .filter((t) => {
+      if (t.status !== 'completed' || !REWARD_TYPES.includes(t.type)) return false
+      const date = new Date(t.completed_at || t.created_at)
+      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
+    })
+    .reduce((total, t) => total + Number(t.amount), 0)
+
+  // Rewards that haven't cleared yet (still pending).
+  const pendingTotal = transactions
+    .filter((t) => t.status === 'pending' && REWARD_TYPES.includes(t.type))
+    .reduce((total, t) => total + Number(t.amount), 0)
+
   const earnGrid = [
     {
       id: 1,
       icon: IoWallet,
       title: 'Total Earnings',
-      amount: formatCurrency(earnings?.total),
+      amount: formatCurrency(earnings?.earnings),
       para: 'All Time',
     },
     {
       id: 2,
       icon: MdOutlineTrendingUp,
       title: 'This Month',
-      amount: formatCurrency(earnings?.thisMonth),
+      amount: formatCurrency(thisMonthTotal),
       para: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
     },
     {
       id: 3,
       icon: FaRegClock,
       title: 'Pending Payout',
-      amount: formatCurrency(earnings?.pending),
+      amount: formatCurrency(pendingTotal),
       para: 'Processing',
     },
     {
       id: 4,
       icon: FaRegCreditCard,
       title: 'Total Paid Out',
-      amount: formatCurrency(earnings?.paidOut),
+      amount: formatCurrency(earnings?.withdrawals),
       para: 'All Time',
     }
   ]
