@@ -84,6 +84,10 @@ function App() {
     {
       path: "/agentdashboard",
       element: <Agents/>
+    },
+    {
+      path: '/reporterdashboard',
+      element: <ReporterDashboard/>
     }
   ]
 

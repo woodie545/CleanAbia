@@ -6,9 +6,9 @@ import { useAuth } from '../hooks/useAuth'
 // Used to bounce a signed-in user to the right place if they
 // try to open a dashboard that isn't theirs.
 export const ROLE_HOME = {
-  reporter: '/reporter',
-  agent: '/agent',
-  admin: '/admin',
+  reporter: '/reporterdashboard',
+  agent: '/agentdashboard',
+  admin: '/admindashboard',
 }
 
 export default function ProtectedRoute({

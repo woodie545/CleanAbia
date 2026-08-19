@@ -22,7 +22,7 @@ export default function LoginSection() {
             // Look up the role so we can send the person to
             // the right dashboard (reporter / agent / admin).
             const profile = await getMyProfile()
-            navigate(ROLE_HOME[profile?.role] ?? '/agentdashboard')
+            navigate(ROLE_HOME[profile?.role] ?? '/')
         } catch (error) {
             setErrorMsg(error.message || 'Failed to log in')
         } finally {
