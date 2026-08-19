@@ -2,9 +2,6 @@ import React from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
-// Maps a profile role to the dashboard route it belongs on.
-// Used to bounce a signed-in user to the right place if they
-// try to open a dashboard that isn't theirs.
 export const ROLE_HOME = {
   reporter: '/reporterdashboard',
   agent: '/agentdashboard',
@@ -22,7 +19,8 @@ export default function ProtectedRoute({
     role,
   } = useAuth()
 
-  if (loading || (isAuthenticated && profileLoading && !role)) {
+  // 1. Wait until BOTH auth session and user profile/role are fully resolved
+  if (loading || profileLoading) {
     return (
       <div className='min-h-screen w-full flex items-center justify-center bg-gray-50'>
         <p className='text-gray-600 font-medium'>Loading...</p>
@@ -30,21 +28,21 @@ export default function ProtectedRoute({
     )
   }
 
+  // 2. Redirect unauthenticated users
   if (!isAuthenticated) {
     return <Navigate to='/login' replace />
   }
 
-  if (
-    allowedRoles &&
-    role &&
-    !allowedRoles.includes(role)
-  ) {
-    return (
-      <Navigate
-        to={ROLE_HOME[role] ?? '/'}
-        replace
-      />
-    )
+  // Normalize role string to handle database casing inconsistencies
+  const normalizedRole = role?.toLowerCase()
+
+  // 3. Strict Role Verification
+  if (allowedRoles && allowedRoles.length > 0) {
+    // If user has no valid role OR their role is not allowed for this route
+    if (!normalizedRole || !allowedRoles.includes(normalizedRole)) {
+      const destination = ROLE_HOME[normalizedRole] ?? '/login'
+      return <Navigate to={destination} replace />
+    }
   }
 
   return children
