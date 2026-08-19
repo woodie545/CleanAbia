@@ -11,25 +11,33 @@ export default function LoginSection() {
     const [loading, setLoading] = useState(false)
     const navigate = useNavigate()
 
-    async function handleLogin(e) {
-        e.preventDefault()
-        setErrorMsg('')
-        setLoading(true)
+async function handleLogin(e) {
+    e.preventDefault()
+    setErrorMsg('')
+    setLoading(true)
 
-        try {
-            await signIn(email, password)
+    try {
+        await signIn(email, password)
 
-            // Look up the role so we can send the person to
-            // the right dashboard (reporter / agent / admin).
-            const profile = await getMyProfile()
-            navigate(ROLE_HOME[profile?.role] ?? '/')
-        } catch (error) {
-            setErrorMsg(error.message || 'Failed to log in')
-        } finally {
-            setLoading(false)
+        // Fetch user profile
+        const profile = await getMyProfile()
+        
+        // Normalize role key (handles 'Reporter', 'REPORTER', 'reporter')
+        const roleKey = profile?.role?.toLowerCase()
+        const targetRoute = ROLE_HOME[roleKey]
+
+        if (targetRoute) {
+            navigate(targetRoute)
+        } else {
+            console.warn(`Unrecognized or missing role: "${profile?.role}". Falling back to default.`)
+            navigate('/agentdashboard')
         }
+    } catch (error) {
+        setErrorMsg(error.message || 'Failed to log in')
+    } finally {
+        setLoading(false)
     }
-
+}
     return (
         <section className='bg-[#E4EEE7] grid md:grid-cols-2 min-h-screen overflow-y-hidden'>
             {/* Left Panel - Hero */}
