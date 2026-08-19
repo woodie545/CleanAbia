@@ -23,7 +23,7 @@ import ReporterDashboard from './components/ReporterDashboard/ReporterDashboard'
 import AdminDashboard from './components/Admin/AdminDashboard'
 import AgentDashboard from './cleanAbia/Agents'
 import Terms from './components/agentsignup/terms'
-import Main from './AgentDashboard/main'
+import Agents from './AgentDashboard/Agents'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -83,7 +83,7 @@ function App() {
     },
     {
       path: "/agentdashboard",
-      element: <Main/>
+      element: <Agents/>
     }
   ]
 
